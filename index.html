@@ -344,7 +344,7 @@ try{const h=await sha256hex(v);
 if(h===PASS_HASH){sessionStorage.setItem('mc_ok','1');mostrarApp();}
 else{err.textContent='Senha incorreta.';document.getElementById('lockPass').value='';}}catch(e){err.textContent='Navegador sem suporte.';}}
 function bloquear(){sessionStorage.removeItem('mc_ok');document.getElementById('app').style.display='none';document.getElementById('lock').style.display='flex';document.getElementById('lockPass').value='';}
-function mostrarApp(){document.getElementById('lock').style.display='none';document.getElementById('app').style.display='block';load();loadFromCloud().then(()=>{/* cloud load done, local load already ran */});const n=seedPdfImport();
+function mostrarApp(){document.getElementById('lock').style.display='none';document.getElementById('app').style.display='block';load();const n=seedPdfImport();
   if(!localStorage.getItem('mc_migr_setembro_v2')){
     let ch=false;
     db.tx.forEach(t=>{ const isSep=(t.vencimento||'').startsWith('2026-09'); const should=isSep?t.vencimento:null; if(t.pagamento!==should){ t.pagamento=should; touch(t); ch=true; }});
@@ -366,7 +366,7 @@ function mostrarApp(){document.getElementById('lock').style.display='none';docum
   // const n=seedPdfImport(); 
   
   mesRef=new Date(); // Inicia no mês atual
-  initValor();render();sincInicial();
+  initValor();render();sincInicial();puxarNuvem(false,3);
 }
 document.getElementById('lockPass').addEventListener('keydown',e=>{if(e.key==='Enter')desbloquear();});
 if(sessionStorage.getItem('mc_ok')==='1'){mostrarApp();}
@@ -376,14 +376,19 @@ let syncTimer=null,pushTimer=null,syncBusy=false;
 function syncCfg(){return SYNC_URL&&SYNC_TOKEN;}
 function setSyncStatus(s){const el=document.getElementById('syncStatus');if(el)el.textContent=s;}
 function agendarPush(){if(!syncCfg())return;clearTimeout(pushTimer);pushTimer=setTimeout(()=>empurrarNuvem(false),1500);}
-function sincInicial(){if(!syncCfg()){setSyncStatus('Offline (local) — preencha SYNC_URL para usar o GDrive');return;}puxarNuvem(false);if(SYNC_POLL_MS>0){clearInterval(syncTimer);syncTimer=setInterval(()=>{if(!syncBusy)puxarNuvem(false);},SYNC_POLL_MS);}}
+function sincInicial(){if(!syncCfg()){setSyncStatus('Offline (local) — preencha SYNC_URL para usar o GDrive');return;}if(SYNC_POLL_MS>0){clearInterval(syncTimer);syncTimer=setInterval(()=>{if(!syncBusy)puxarNuvem(false,1);},SYNC_POLL_MS);}}
 function mergeTx(local,remote){const m=new Map();(local||[]).forEach(t=>{if(t&&t.id)m.set(String(t.id),t);});(remote||[]).forEach(r=>{if(!r||!r.id)return;const id=String(r.id);const cur=m.get(id);if(!cur||Number(r.updatedAt||0)>=Number(cur.updatedAt||0))m.set(id,r);});return [...m.values()];}
 function mergeList(a,b){return [...new Set([...(a||[]),...(b||[])].map(x=>String(x||'').trim()).filter(Boolean))];}
-async function puxarNuvem(falar){if(!syncCfg()){if(falar)toast('Configure SYNC_URL e SYNC_TOKEN no código.');return;}if(syncBusy)return;syncBusy=true;setSyncStatus('Sincronizando…');
-try{const r=await fetch(SYNC_URL+'?action=pull&token='+encodeURIComponent(SYNC_TOKEN));const j=await r.json();
-if(j.ok&&j.data){db.tx=mergeTx(db.tx,j.data.tx);if(j.data.contas&&j.data.contas.length)db.contas=mergeList(db.contas,j.data.contas);garantir();saveLocal();render();setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));}
-else{setSyncStatus('Erro sync');if(falar)toast('Nuvem: '+(j.error||'?'));}
-}catch(e){setSyncStatus('Offline (local)');if(falar)toast('Sem conexão. Usando dados locais.');}syncBusy=false;}
+// Pull unificado: anti-cache (a mesma URL era devolvida em cache sem os itens novos), retry e contagem visível
+async function puxarNuvem(falar,tentativas){if(!syncCfg()){if(falar)toast('Configure SYNC_URL e SYNC_TOKEN no código.');return false;}if(syncBusy)return false;syncBusy=true;
+tentativas=tentativas||3;let ultimo='?';
+for(let i=0;i<tentativas;i++){setSyncStatus('Sincronizando…'+(tentativas>1&&i?' (tentativa '+(i+1)+')':''));
+try{const r=await fetch(SYNC_URL+'?action=pull&token='+encodeURIComponent(SYNC_TOKEN)+'&_ts='+Date.now(),{cache:'no-store'});const j=await r.json();
+if(j.ok&&j.data){db.tx=mergeTx(db.tx,j.data.tx);if(j.data.contas&&j.data.contas.length)db.contas=mergeList(db.contas,j.data.contas);garantir();saveLocal();render();setSyncStatus('Nuvem ☁ '+db.tx.length+' lançamentos • '+new Date().toLocaleTimeString('pt-BR'));syncBusy=false;if(falar)toast('Sincronizado: '+db.tx.length+' lançamentos.');descarregarFila();return true;}
+ultimo=(j&&j.error)||'resposta inválida';}
+catch(e){ultimo=String(e&&e.message||e);}
+if(i<tentativas-1)await new Promise(res=>setTimeout(res,1200));}
+syncBusy=false;setSyncStatus('Offline (local)');if(falar)toast('Falha na nuvem: '+ultimo);return false;}
 async function empurrarNuvem(falar){if(!syncCfg())return;setSyncStatus('Enviando…');
 try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify({token:SYNC_TOKEN,action:'push',data:db})});const j=await r.json();
 if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));if(falar)toast('Enviado para o GDrive.');}else{setSyncStatus('Erro ao enviar');if(falar)toast('Erro: '+(j.error||'?'));}
@@ -393,8 +398,8 @@ function garantir(){if(!db.contas||!db.contas.length)db.contas=['Carteira'];if(!
 function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);db={tx:d.tx||[],contas:d.contas&&d.contas.length?d.contas:['Carteira','Banco'],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
 db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});}garantir();}catch(e){}}
 
-// NEW: Fetch data from Google Sheets cloud, fallback to localStorage
-async function loadFromCloud(){if(!SYNC_URL||!SYNC_TOKEN){return false;}setSyncStatus('Carregando da nuvem...');try{const r=await fetch(SYNC_URL+'?action=pull&token='+encodeURIComponent(SYNC_TOKEN));const j=await r.json();if(j.ok&&j.data){db.tx=mergeTx(db.tx,j.data.tx);if(j.data.contas&&j.data.contas.length)db.contas=mergeList(db.contas,j.data.contas);garantir();saveLocal();render();setSyncStatus('Nuvem carregada ☁ '+new Date().toLocaleTimeString('pt-BR'));return true;}throw new Error('Sem dados');}catch(e){setSyncStatus('Offline (local)');return false;}}
+// Carregamento inicial da nuvem (usa o pull unificado com retry)
+async function loadFromCloud(){if(!SYNC_URL||!SYNC_TOKEN){return false;}return puxarNuvem(false,3);}
 function seedPdfImport(){
   try{
     if(typeof PDF_IMPORT==='undefined'||!PDF_IMPORT.tx) return 0;
@@ -418,15 +423,32 @@ function save(){saveLocal();}
 async function apiPost(action,payload){if(!syncCfg())return {ok:false,offline:true};
   try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({token:SYNC_TOKEN,action},payload||{}))});
   return await r.json();}catch(e){return {ok:false,error:String(e&&e.message||e)}};}
-async function nuvemCriar(items,contas){if(!syncCfg()||!items.length)return;setSyncStatus('Criando na nuvem…');
+// Fila de operações pendentes: se o envio falhar (offline ou refresh no meio do voo), tenta de novo no próximo arranque
+const OUT_KEY=KEY+'_outbox_v1';
+function lerFila(){try{const r=localStorage.getItem(OUT_KEY);const a=r?JSON.parse(r):[];return Array.isArray(a)?a:[];}catch(e){return [];}}
+function salvarFila(a){try{localStorage.setItem(OUT_KEY,JSON.stringify(a));}catch(e){}}
+function enfileirar(op,payload){const f=lerFila();f.push({op,payload,ts:Date.now()});salvarFila(f);setSyncStatus('Na fila p/ enviar ('+f.length+') ☁');}
+function backendAntigo(j){return j&&!j.ok&&!j.offline&&j.error==='acao desconhecida';}
+function avisarBackendAntigo(){toast('Atualize o Code.gs: republique o Apps Script (nova versão) para ativar o modo incremental.');setSyncStatus('Code.gs desatualizado — republique o Apps Script');}
+async function descarregarFila(){if(!syncCfg())return 0;const f=lerFila();if(!f.length)return 0;const resto=[];let ok=0,falhou=false;
+  for(const it of f){if(falhou){resto.push(it);continue;}const j=await apiPost(it.op,it.payload);
+    if(j&&j.ok){ok++;}else{if(backendAntigo(j)){avisarBackendAntigo();salvarFila(f);return 0;}falhou=true;resto.push(it);}}
+  salvarFila(resto);if(ok)setSyncStatus('Fila enviada ☁ ('+ok+') • '+new Date().toLocaleTimeString('pt-BR'));return ok;}
+async function nuvemCriar(items,contas){if(!items.length)return;if(!syncCfg()){enfileirar('create',{items,contas});return;}setSyncStatus('Criando na nuvem…');
   const j=await apiPost('create',{items,contas});
-  setSyncStatus(j.ok?'Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'):'Erro ao criar');}
-async function nuvemAtualizar(items){if(!syncCfg()||!items.length)return;setSyncStatus('Atualizando na nuvem…');
+  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();}
+  else if(backendAntigo(j)){avisarBackendAntigo();}
+  else{enfileirar('create',{items,contas});toast('Sem conexão — lançamento na fila, será enviado sozinho.');}}
+async function nuvemAtualizar(items){if(!items.length)return;if(!syncCfg()){enfileirar('update',{items});return;}setSyncStatus('Atualizando na nuvem…');
   const j=await apiPost('update',{items});
-  setSyncStatus(j.ok?'Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'):'Erro ao atualizar');}
-async function nuvemExcluir(ids){if(!syncCfg()||!ids.length)return;setSyncStatus('Excluindo na nuvem…');
+  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();}
+  else if(backendAntigo(j)){avisarBackendAntigo();}
+  else{enfileirar('update',{items});}}
+async function nuvemExcluir(ids){if(!ids.length)return;if(!syncCfg()){enfileirar('delete',{ids});return;}setSyncStatus('Excluindo na nuvem…');
   const j=await apiPost('delete',{ids});
-  setSyncStatus(j.ok?'Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'):'Erro ao excluir');}
+  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();}
+  else if(backendAntigo(j)){avisarBackendAntigo();}
+  else{enfileirar('delete',{ids});}}
 function touch(t){t.updatedAt=Date.now();return t;}
 
 // ===== valor auto-formatado BRL (só números) =====
@@ -694,7 +716,7 @@ function renderCfg(){
 
 // ===== render geral =====
 function render(){
-  load();garantir();refreshQuickSelects();
+  garantir();refreshQuickSelects();
   if(!filtrosInit){
     selRep=new Set(db.reps.map(r=>r.id));
     selContas=new Set(db.contas);
