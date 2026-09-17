@@ -88,7 +88,13 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 /* quick add — UMA ÚNICA LINHA */
 .quick{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px}
 .quick h3{color:#fff;font-size:14px;margin-bottom:10px}
-.quick-row{display:grid;grid-template-columns:100px 2fr 1.4fr 125px 110px 140px auto;gap:8px;align-items:end}
+.quick-row{display:grid;grid-template-columns:2.6fr 1.4fr 125px 110px 140px auto;gap:8px;align-items:end}
+.qchecks{display:flex;gap:6px;align-items:center}
+.qcheck{display:flex;gap:6px;align-items:center;background:#0e141b;border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap}
+.qcheck input{width:auto;margin:0;accent-color:var(--green)}
+.qcheck.on{color:#fff}
+.qcheck.on.pag{border-color:var(--red)}
+.qcheck.on.rec{border-color:var(--green)}
 @media(max-width:1000px){.quick-row{grid-template-columns:1fr 1fr 1fr}}
 @media(max-width:600px){.quick-row{grid-template-columns:1fr}}
 .flag{display:flex;gap:8px;align-items:center;background:#0e141b;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;white-space:nowrap}
@@ -98,7 +104,7 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 
 /* table */
 .twrap{overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:var(--radius)}
-table{width:100%;border-collapse:collapse;font-size:14px;min-width:820px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:680px}
 th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left}
 th{background:#101922;font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px}
 tr.vencido td{background:rgba(179,58,58,.15)}
@@ -198,17 +204,19 @@ footer code{color:var(--accent)}
 
       <!-- CRIAÇÃO EM UMA ÚNICA LINHA -->
       <div class="quick">
-        <h3 style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <span>➕ Novo lançamento</span>
-          <span style="display:flex;gap:8px;align-items:center">
+        <h3 style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:10px">
+          <span style="display:flex;gap:8px;align-items:center;justify-self:start">
             <label style="margin:0">Data *</label>
             <input id="qData" type="date" style="width:160px">
           </span>
+          <span class="qchecks" style="justify-self:center">
+            <label class="qcheck pag on" id="qcPagar"><input type="checkbox" checked onchange="setQTipo('pagar')">🔴 Pagar</label>
+            <label class="qcheck rec" id="qcReceber"><input type="checkbox" onchange="setQTipo('receber')">🟢 Receber</label>
+          </span>
+          <span></span>
         </h3>
+        <input type="hidden" id="qTipo" value="pagar">
         <div class="quick-row">
-          <div><label>Tipo</label>
-            <select id="qTipo"><option value="pagar">A PAGAR 🔴</option><option value="receber">A RECEBER 🟢</option></select>
-          </div>
           <div><label>Nome da conta *</label><input id="qNome" placeholder="Ex: Aluguel, Salário"></div>
           <div><label>Conta *</label><select id="qConta"></select></div>
           <div><label>Repetição</label>
@@ -231,7 +239,7 @@ footer code{color:var(--accent)}
 
       <div class="twrap">
         <table>
-          <thead><tr><th>Nome</th><th>Tipo</th><th>Conta</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Nome</th><th style="text-align:right">Conta</th><th style="text-align:right">Data</th><th style="text-align:right">Valor</th><th style="text-align:right">Ações</th></tr></thead>
           <tbody id="tbody"></tbody>
         </table>
         <div class="empty" id="vazio" style="display:none">Nenhum lançamento com esses filtros.</div>
@@ -494,6 +502,11 @@ function irHoje(){mesRef=new Date();mesRef.setDate(1);render();}
 // ===== criar em linha única =====
 // qrTipo já declarado no topo como var
 function qRepSel(){return document.getElementById('qRep');}
+function setQTipo(v){document.getElementById('qTipo').value=v;
+document.querySelector('#qcPagar input').checked=(v==='pagar');
+document.querySelector('#qcReceber input').checked=(v==='receber');
+document.getElementById('qcPagar').classList.toggle('on',v==='pagar');
+document.getElementById('qcReceber').classList.toggle('on',v==='receber');}
 function repAtual(){const id=qRepSel().value;return db.reps.find(r=>r.id===id)||REPS_DEFAULT[0];}
 function onRepChange(){const r=repAtual();qrTipo=r.tipo;
   document.getElementById('qtdWrap').style.display=qrTipo==='unica'?'none':'block';
@@ -785,12 +798,14 @@ function render(){
 
   document.getElementById('vazio').style.display=lista.length?'none':'block';
   document.getElementById('tbody').innerHTML=lista.map(t=>{const s=statusDe(t);
-    const pill=s==='pago'?'<span class="pill pago">Consolidada</span>':s==='vencido'?'<span class="pill vencido-pill">Em aberto • vencida</span>':'<span class="pill pendente">Não consolidada</span>';
+    const btnCons=t.pagamento
+      ?'<button class="btn-rec btn-small" title="Consolidada — clique para estornar" onclick="darBaixa(\''+t.id+'\')">✔ Consolidada</button>'
+      :'<button class="btn-ghost btn-small" onclick="darBaixa(\''+t.id+'\')">✔ Consolidar</button>';
+    const corV=t.tipo==='pagar'?'var(--red)':'var(--green)';
     return '<tr class="'+(s==='vencido'?'vencido':'')+(t.pagamento?' pago-row':'')+'"><td><b style="color:#fff">'+escH(t.descricao)+'</b></td>'
-    +'<td class="'+(t.tipo==='pagar'?'tipo-pagar':'tipo-receber')+'">'+(t.tipo==='pagar'?'Pagar':'Receber')+'</td>'
-    +'<td><span style="color:var(--accent);font-weight:800;margin-right:4px">'+siglaDe(t)+'</span>🏦 '+escH(t.conta)+'</td><td>'+fmtData(t.vencimento)+'</td>'
-    +'<td><b style="color:#fff">'+BRL(t.valor)+'</b></td><td>'+pill+'</td>'
-    +'<td style="white-space:nowrap"><button class="btn-ghost btn-small" onclick="darBaixa(\''+t.id+'\')">'+(t.pagamento?'↩ Estornar':'✔ Consolidar')+'</button> '
+    +'<td style="white-space:nowrap;text-align:right"><span style="color:var(--accent);font-weight:800;margin-right:4px">'+siglaDe(t)+'</span>🏦 '+escH(t.conta)+'</td><td style="white-space:nowrap;text-align:right">'+fmtData(t.vencimento)+'</td>'
+    +'<td style="white-space:nowrap;text-align:right"><b style="color:'+corV+'">'+BRL(t.valor)+'</b></td>'
+    +'<td style="white-space:nowrap;text-align:right">'+btnCons+' '
     +'<button class="btn-ghost btn-small" onclick="abrirEdicao(\''+t.id+'\')">✏</button> '
     +'<button class="btn-ghost btn-small" data-id="'+t.id+'" onclick="excluirTx(this)">🗑</button></td></tr>';}).join('');
 }
