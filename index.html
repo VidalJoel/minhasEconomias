@@ -344,7 +344,7 @@ try{const h=await sha256hex(v);
 if(h===PASS_HASH){sessionStorage.setItem('mc_ok','1');mostrarApp();}
 else{err.textContent='Senha incorreta.';document.getElementById('lockPass').value='';}}catch(e){err.textContent='Navegador sem suporte.';}}
 function bloquear(){sessionStorage.removeItem('mc_ok');document.getElementById('app').style.display='none';document.getElementById('lock').style.display='flex';document.getElementById('lockPass').value='';}
-function mostrarApp(){document.getElementById('lock').style.display='none';document.getElementById('app').style.display='block';load();const n=seedPdfImport();
+function mostrarApp(){document.getElementById('lock').style.display='none';document.getElementById('app').style.display='block';load();loadFromCloud().then(()=>{/* cloud load done, local load already ran */});const n=seedPdfImport();
   if(!localStorage.getItem('mc_migr_setembro_v2')){
     let ch=false;
     db.tx.forEach(t=>{ const isSep=(t.vencimento||'').startsWith('2026-09'); const should=isSep?t.vencimento:null; if(t.pagamento!==should){ t.pagamento=should; touch(t); ch=true; }});
@@ -391,7 +391,10 @@ if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'
 function sincronizarAgora(){puxarNuvem(true);}
 function garantir(){if(!db.contas||!db.contas.length)db.contas=['Carteira'];if(!db.grupos)db.grupos=['Outros'];if(!db.reps||!db.reps.length)db.reps=REPS_DEFAULT.map(r=>({...r}));}
 function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);db={tx:d.tx||[],contas:d.contas&&d.contas.length?d.contas:['Carteira','Banco'],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
-db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});}garantir();}catch(e){}}
+db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});}garantir();}catch(e){}}}
+
+// NEW: Fetch data from Google Sheets cloud, fallback to localStorage
+async function loadFromCloud(){if(!SYNC_URL||!SYNC_TOKEN){return false;}setSyncStatus('Carregando da nuvem...');try{const r=await fetch(SYNC_URL+'?action=pull&token='+encodeURIComponent(SYNC_TOKEN));const j=await r.json();if(j.ok&&j.data){db.tx=mergeTx(db.tx,j.data.tx);if(j.data.contas&&j.data.contas.length)db.contas=mergeList(db.contas,j.data.contas);garantir();saveLocal();render();setSyncStatus('Nuvem carregada ☁ '+new Date().toLocaleTimeString('pt-BR'));return true;}throw new Error('Sem dados');}catch(e){setSyncStatus('Offline (local)');return false;}}
 function seedPdfImport(){
   try{
     if(typeof PDF_IMPORT==='undefined'||!PDF_IMPORT.tx) return 0;
@@ -409,7 +412,8 @@ function seedPdfImport(){
     return n;
   }catch(e){ return 0; }
 }
-function saveLocal(){garantir();try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}}
+function saveLocal(){garantir();try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}// Push to cloud as primary persistence
+if(syncCfg()){empurrarNuvem(false);}}
 function save(){saveLocal();agendarPush();}
 function touch(t){t.updatedAt=Date.now();return t;}
 
