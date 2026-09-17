@@ -541,6 +541,9 @@ function salvarLinha(){
     }
   }
   novos.forEach(t=>db.tx.push(t));
+  // Se o lançamento cai em outro mês, leva a tela até ele (senão parece que "não apareceu nada")
+  const mkAtual=mesKey(mesRef);
+  if(!novos.some(t=>(t.vencimento||'').slice(0,7)===mkAtual)){const p=String(novos[0].vencimento||'').split('-');if(p.length===3){mesRef=new Date(+p[0],+p[1]-1,1);}}
   document.getElementById('qNome').value='';document.getElementById('qValor').value='';qCentavos=0;
   qRepSel().value='unica';qrTipo='unica';
   document.getElementById('qtdWrap').style.display='none';updRepHint();
@@ -744,6 +747,11 @@ function render(){
     if(!fStatus) fStatus='todas';
     filtrosInit=true;
   }
+  // Contas/repetições que chegam depois (pull da nuvem, importação) entram marcadas por padrão;
+  // desmarque manual continua valendo (só o que é NOVO de verdade é auto-marcado)
+  if(!window._vContas){window._vContas=new Set(db.contas);window._vReps=new Set(db.reps.map(r=>r.id));}
+  db.contas.forEach(c=>{if(!window._vContas.has(c)){window._vContas.add(c);selContas.add(c);}});
+  db.reps.forEach(r=>{if(!window._vReps.has(r.id)){window._vReps.add(r.id);selRep.add(r.id);}});
   const nomesMes=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   document.getElementById('mesAtual').textContent=nomesMes[mesRef.getMonth()]+' de '+mesRef.getFullYear();
 
