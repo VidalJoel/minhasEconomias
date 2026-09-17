@@ -294,14 +294,14 @@ Configure <code>SYNC_URL</code> e <code>SYNC_TOKEN</code> no código com a URL /
   </div>
 </div>
 
-<!-- MODAL ESCOPO DE PARCELAMENTO -->
+<!-- MODAL ESCOPO DE EXCLUSÃO/EDIÇÃO -->
 <div class="modal-bg" id="scopeBg">
   <div class="modal" style="width:340px">
-    <h3 style="margin-bottom:8px">Parcelamento</h3>
+    <h3 style="margin-bottom:8px">Excluir / editar grupo</h3>
     <p id="scopeMsg" style="color:var(--text);font-size:13px;line-height:1.5;margin:0"></p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
-      <button class="btn-steam" onclick="escolherEscopo('solo')">Somente esta parcela</button>
-      <button class="btn-steam" style="background:linear-gradient(90deg,#a4d007,#5bb93b)" onclick="escolherEscopo('grupo')">Esta e as futuras parcelas</button>
+      <button class="btn-steam" id="btnScopeSolo" onclick="escolherEscopo('solo')">Somente esta</button>
+      <button class="btn-steam" id="btnScopeGrupo" style="background:linear-gradient(90deg,#a4d007,#5bb93b)" onclick="escolherEscopo('grupo')">Esta e as futuras</button>
       <button class="btn-ghost" onclick="fecharScope()">Cancelar</button>
     </div>
   </div>
@@ -388,10 +388,10 @@ async function empurrarNuvem(falar){if(!syncCfg())return;setSyncStatus('Enviando
 try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify({token:SYNC_TOKEN,action:'push',data:db})});const j=await r.json();
 if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));if(falar)toast('Enviado para o GDrive.');}else{setSyncStatus('Erro ao enviar');if(falar)toast('Erro: '+(j.error||'?'));}
 }catch(e){setSyncStatus('Offline (local)');if(falar)toast('Sem conexão. Salvo local.');}}
-function sincronizarAgora(){puxarNuvem(true);}
+function sincronizarAgora(){puxarNuvem(true);setTimeout(()=>empurrarNuvem(true),2000);}
 function garantir(){if(!db.contas||!db.contas.length)db.contas=['Carteira'];if(!db.grupos)db.grupos=['Outros'];if(!db.reps||!db.reps.length)db.reps=REPS_DEFAULT.map(r=>({...r}));}
 function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);db={tx:d.tx||[],contas:d.contas&&d.contas.length?d.contas:['Carteira','Banco'],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
-db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});}garantir();}catch(e){}}}
+db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});}garantir();}catch(e){}}
 
 // NEW: Fetch data from Google Sheets cloud, fallback to localStorage
 async function loadFromCloud(){if(!SYNC_URL||!SYNC_TOKEN){return false;}setSyncStatus('Carregando da nuvem...');try{const r=await fetch(SYNC_URL+'?action=pull&token='+encodeURIComponent(SYNC_TOKEN));const j=await r.json();if(j.ok&&j.data){db.tx=mergeTx(db.tx,j.data.tx);if(j.data.contas&&j.data.contas.length)db.contas=mergeList(db.contas,j.data.contas);garantir();saveLocal();render();setSyncStatus('Nuvem carregada ☁ '+new Date().toLocaleTimeString('pt-BR'));return true;}throw new Error('Sem dados');}catch(e){setSyncStatus('Offline (local)');return false;}}
@@ -412,9 +412,21 @@ function seedPdfImport(){
     return n;
   }catch(e){ return 0; }
 }
-function saveLocal(){garantir();try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}// Push to cloud as primary persistence
-if(syncCfg()){empurrarNuvem(false);}}
-function save(){saveLocal();agendarPush();}
+function saveLocal(){garantir();try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}}
+function save(){saveLocal();}
+// ===== GRUD incremental: fala com a planilha por linha, sem apagar tudo =====
+async function apiPost(action,payload){if(!syncCfg())return {ok:false,offline:true};
+  try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({token:SYNC_TOKEN,action},payload||{}))});
+  return await r.json();}catch(e){return {ok:false,error:String(e&&e.message||e)}};}
+async function nuvemCriar(items,contas){if(!syncCfg()||!items.length)return;setSyncStatus('Criando na nuvem…');
+  const j=await apiPost('create',{items,contas});
+  setSyncStatus(j.ok?'Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'):'Erro ao criar');}
+async function nuvemAtualizar(items){if(!syncCfg()||!items.length)return;setSyncStatus('Atualizando na nuvem…');
+  const j=await apiPost('update',{items});
+  setSyncStatus(j.ok?'Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'):'Erro ao atualizar');}
+async function nuvemExcluir(ids){if(!syncCfg()||!ids.length)return;setSyncStatus('Excluindo na nuvem…');
+  const j=await apiPost('delete',{ids});
+  setSyncStatus(j.ok?'Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'):'Erro ao excluir');}
 function touch(t){t.updatedAt=Date.now();return t;}
 
 // ===== valor auto-formatado BRL (só números) =====
@@ -473,22 +485,23 @@ function salvarLinha(){
   const data=document.getElementById('qData').value||hojeISO();
   const valor=qCentavos/100;
   if(!nome||!conta||!(valor>0)){toast('Preencha nome, conta e valor.');return;}
-  const r=repAtual();const repFeito=r.id;
+  const r=repAtual();const novos=[];
   if(r.tipo==='unica'){
-    db.tx.push(touch({id:'id'+Date.now(),descricao:nome,tipo,valor,grupo:'Outros',conta,vencimento:data,pagamento:null,obs:'',rep:r.id}));
+    novos.push(touch({id:'id'+Date.now(),descricao:nome,tipo,valor,grupo:'Outros',conta,vencimento:data,pagamento:null,obs:'',rep:r.id}));
   }else{
     let qtd=Math.min(60,Math.max(2,parseInt(document.getElementById('qQtd').value||'12',10)));
     const base=Date.now();
     for(let i=0;i<qtd;i++){
       const iso=addMonthsISO(data,i);
       const descRep=r.tipo==='fixa'?nome+' [Fixa]':nome+' ('+(i+1)+'/'+qtd+')';
-      db.tx.push(touch({id:'id'+base+'_'+i,descricao:descRep,tipo,valor,grupo:'Outros',conta,vencimento:iso,pagamento:null,obs:r.tipo==='fixa'?'FIXA '+qtd+' meses':'Parcela '+(i+1)+'/'+qtd,rep:r.id,grupoId:'g'+base,parcela:r.tipo==='parcelada'?{n:i+1,total:qtd}:undefined}));
+      novos.push(touch({id:'id'+base+'_'+i,descricao:descRep,tipo,valor,grupo:'Outros',conta,vencimento:iso,pagamento:null,obs:r.tipo==='fixa'?'FIXA '+qtd+' meses':'Parcela '+(i+1)+'/'+qtd,rep:r.id,grupoId:'g'+base,parcela:r.tipo==='parcelada'?{n:i+1,total:qtd}:undefined}));
     }
   }
+  novos.forEach(t=>db.tx.push(t));
   document.getElementById('qNome').value='';document.getElementById('qValor').value='';qCentavos=0;
   qRepSel().value='unica';qrTipo='unica';
   document.getElementById('qtdWrap').style.display='none';updRepHint();
-  save();render();
+  save();render();nuvemCriar(novos);
   toast(r.tipo==='unica'?'Lançamento registrado! 📝':r.tipo==='fixa'?'Repetição mensal criada! 📌':'Parcelamento criado! 🧾');
 }
 
@@ -496,43 +509,69 @@ function salvarLinha(){
 // editarIds/scopeCb já declarados no topo como var
 function parcBase(t){return t.grupoId||(t.id||'').replace(/_\d+$/,'');}
 function ehParcelada(t){return !!(t.parcela&&t.parcela.total>1);}
-function baseNome(desc){return String(desc||'').replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)/,'').trim().toLowerCase();}
+function repTipoDe(t){const r=db.reps.find(x=>x.id===t.rep);return r?r.tipo:(t.rep==='fixa'||t.rep==='parcelada'?t.rep:'unica');}
+function ehFixa(t){return repTipoDe(t)==='fixa'||/\[fixa\]/i.test(t.descricao||'')||/^fixa /i.test(t.obs||'');}
+function baseNome(desc){return String(desc||'').replace(/\s*\[fixa\]/gi,'').replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)/,'').trim().toLowerCase();}
 function futurosDe(t){
-  if(!ehParcelada(t)) return [];
-  const b=parcBase(t); const n=Number(t.parcela.n)||0; const total=Number(t.parcela.total)||0; const bn=baseNome(t.descricao);
+  const b=parcBase(t); const bn=baseNome(t.descricao);
+  const fixa=ehFixa(t), parc=ehParcelada(t);
+  if(!fixa&&!parc) return [];
+  const n=Number((t.parcela&&t.parcela.n)||0);
   return db.tx.filter(x=>{
-    if(!ehParcelada(x)) return false;
-    const xn=Number(x.parcela.n)||0; if(xn<=n) return false;
-    if(parcBase(x)===b) return true;
-    // fallback: mesmo nome e mesmo total (import PDF / grupos antigos sem grupoId)
-    if(total && Number(x.parcela.total)===total && baseNome(x.descricao)===bn) return true;
+    if(x.id===t.id) return false;
+    if(String(x.vencimento||'')<=String(t.vencimento||'')) return false;
+    if(parc&&ehParcelada(x)){
+      const xn=Number(x.parcela.n)||0; if(xn<=n) return false;
+      if(parcBase(x)===b) return true;
+      if(Number(x.parcela.total)===Number(t.parcela.total)&&baseNome(x.descricao)===bn) return true;
+      return false;
+    }
+    if(fixa&&ehFixa(x)){
+      if(x.grupoId&&t.grupoId&&x.grupoId===t.grupoId) return true;
+      if(baseNome(x.descricao)===bn&&String(x.conta)===String(t.conta)&&Number(x.valor)===Number(t.valor)) return true;
+      return false;
+    }
     return false;
-  });
+  }).sort((a,b)=>String(a.vencimento||'').localeCompare(String(b.vencimento||'')));
 }
-function perguntarEscopo(msg,cb){scopeCb=cb;document.getElementById('scopeMsg').textContent=msg;document.getElementById('scopeBg').classList.add('open');}
+function perguntarEscopo(msg,rotSolo,rotGrupo,cb){
+  if(typeof rotSolo==='function'){cb=rotSolo;rotSolo=null;}
+  if(typeof rotGrupo==='function'){cb=rotGrupo;rotGrupo=null;}
+  scopeCb=cb;document.getElementById('scopeMsg').textContent=msg;
+  const bS=document.getElementById('btnScopeSolo'),bG=document.getElementById('btnScopeGrupo');
+  if(bS&&rotSolo)bS.textContent=rotSolo;
+  if(bG&&rotGrupo)bG.textContent=rotGrupo;
+  document.getElementById('scopeBg').classList.add('open');}
 function escolherEscopo(esc){const cb=scopeCb;scopeCb=null;document.getElementById('scopeBg').classList.remove('open');if(cb)cb(esc);}
 function fecharScope(){scopeCb=null;document.getElementById('scopeBg').classList.remove('open');}
 document.getElementById('scopeBg').addEventListener('click',e=>{if(e.target.id==='scopeBg')fecharScope();});
 
 // ===== lista / ações =====
-function darBaixa(id){const t=db.tx.find(x=>x.id===id);if(!t)return;t.pagamento=t.pagamento?null:(t.vencimento||hojeISO());touch(t);save();render();}
+function darBaixa(id){const t=db.tx.find(x=>x.id===id);if(!t)return;t.pagamento=t.pagamento?null:(t.vencimento||hojeISO());touch(t);save();render();nuvemAtualizar([t]);}
 function excluirTx(el){
   try{
     if(el.dataset.armed==='1'){
       const t=db.tx.find(x=>x.id===el.dataset.id);if(!t){toast('Não encontrado: '+el.dataset.id);return;}
       let fut=[]; try{ fut=futurosDe(t); }catch(e){ console.error('futurosDe erro',e); toast('Erro futurosDe: '+(e.message||e)); fut=[]; }
-      if(ehParcelada(t)&&fut.length){
-        perguntarEscopo('Esta conta "'+t.descricao+'" é parte de um parcelamento com '+fut.length+' parcela(s) futura(s). O que deseja excluir?',esc=>{
+      if(fut.length){
+        const abertas=fut.filter(f=>!f.pagamento);
+        const rot=ehParcelada(t)?'parcela':'mensalidade';
+        perguntarEscopo(
+          'Esta conta "'+t.descricao+'" tem '+fut.length+' '+rot+'(s) futura(s) ('+abertas.length+' não consolidada(s)). O que deseja excluir?',
+          'Somente esta',
+          'Esta + futuras não consolidadas ('+abertas.length+')',
+          esc=>{
           try{
-            db.tx=db.tx.filter(x=>x.id!==t.id);
-            if(esc==='grupo') fut.forEach(f=>{ db.tx=db.tx.filter(x=>x.id!==f.id); });
-            save();render();toast('Excluído.');
+            const ids=[t.id].concat(esc==='grupo'?abertas.map(f=>f.id):[]);
+            const set=new Set(ids);
+            db.tx=db.tx.filter(x=>!set.has(x.id));
+            save();render();nuvemExcluir(ids);toast('Excluído.');
           }catch(e){ console.error('excluir grupo erro',e); toast('Erro ao excluir grupo: '+(e.message||e)); }
         });
-        delete el.dataset.armed;
+        delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent=el.dataset.label||'🗑';
         return;
       }
-      try{ db.tx=db.tx.filter(x=>x.id!==t.id); save();render();toast('Excluído.'); }
+      try{ const id=t.id; db.tx=db.tx.filter(x=>x.id!==id); save();render();nuvemExcluir([id]);toast('Excluído.'); }
       catch(e){ console.error('excluir simples erro',e); toast('Erro ao excluir: '+(e.message||e)); }
     } else {
       el.dataset.armed='1';el.dataset.label=el.textContent;el.classList.add('btn-armed');el.textContent='Confirmar?';
@@ -540,18 +579,20 @@ function excluirTx(el){
     }
   }catch(e){ console.error('excluirTx erro',e); toast('Erro excluirTx: '+(e.message||e)); }
 }
-function excluirForcado(id){ try{ db.tx=db.tx.filter(x=>x.id!==id); save();render(); toast('Excluído forçado.'); }catch(e){ toast('Erro forçado: '+(e.message||e)); } }
+function excluirForcado(id){ try{ db.tx=db.tx.filter(x=>x.id!==id); save();render();nuvemExcluir([id]); toast('Excluído forçado.'); }catch(e){ toast('Erro forçado: '+(e.message||e)); } }
 function abrirEdicao(id){
   const t=db.tx.find(x=>x.id===id);if(!t)return;
   const fut=futurosDe(t);
-  if(ehParcelada(t)&&fut.length){
-    perguntarEscopo('Esta conta é parte de um parcelamento com '+fut.length+' parcela(s) futura(s). A edição vale para onde?',esc=>{
-      editarIds=esc==='grupo'?[t.id].concat(fut.map(x=>x.id)):null;
+  if(fut.length){
+    const abertas=fut.filter(f=>!f.pagamento);
+    perguntarEscopo('Esta conta tem '+fut.length+' futura(s) ('+abertas.length+' não consolidada(s)). A edição vale para onde?',
+      'Somente esta','Esta + futuras não consolidadas',esc=>{
+      editarIds=esc==='grupo'?[t.id].concat(abertas.map(x=>x.id)):[t.id];
       abrirEdicaoForm(t.id);
     });
     return;
   }
-  editarIds=null;
+  editarIds=[t.id];
   abrirEdicaoForm(t.id);
 }
 function abrirEdicaoForm(id){
@@ -591,7 +632,8 @@ function salvarEdicao(){
   ids.forEach(fid=>{const f=db.tx.find(x=>x.id===fid);if(f&&!aplica(f))ok=false;});
   editarIds=null;
   if(!ok)return;
-  save();fecharEdicao();render();toast('Atualizado!');
+  const afetados=ids.map(fid=>db.tx.find(x=>x.id===fid)).filter(Boolean);
+  save();fecharEdicao();render();nuvemAtualizar(afetados);toast('Atualizado!');
 }
 
 // ===== config (criar / editar / excluir) =====
@@ -712,17 +754,17 @@ function render(){
 // ===== utilidades =====
 function exportarCSV(){const rows=[['Nome','Tipo','Conta','Data','Valor','Consolidada']];db.tx.forEach(t=>rows.push([t.descricao,t.tipo,t.conta,t.vencimento,String(t.valor).replace('.',','),t.pagamento?'SIM':'NAO']));const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='contas.csv';a.click();}
 function backupJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));a.download='backup-contas.json';a.click();}
-function restaurarBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.tx){db={tx:d.tx,contas:d.contas||['Carteira'],grupos:d.grupos||['Outros']};save();render();toast('Backup restaurado!');}else toast('Arquivo inválido.');}catch(e){toast('Arquivo inválido.');}};r.readAsText(f);inp.value='';}
-function forcarImportPdf(){ try{ const have=new Set(db.tx.map(t=>t.id)); let n=0, up=0;
+function restaurarBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.tx){db={tx:d.tx,contas:d.contas||['Carteira'],grupos:d.grupos||['Outros']};save();render();empurrarNuvem(true);toast('Backup restaurado!');}else toast('Arquivo inválido.');}catch(e){toast('Arquivo inválido.');}};r.readAsText(f);inp.value='';}
+function forcarImportPdf(){ try{ const have=new Set(db.tx.map(t=>t.id)); let n=0, up=0; const novos=[],alts=[];
   if(typeof PDF_IMPORT!=='undefined'&&PDF_IMPORT.tx) PDF_IMPORT.tx.forEach(t=>{
-    if(!have.has(t.id)){ db.tx.push(t); n++; }
-    else { const ex=db.tx.find(x=>x.id===t.id); if(ex && ex.pagamento!==t.pagamento){ ex.pagamento=t.pagamento; touch(ex); up++; } }
+    if(!have.has(t.id)){ db.tx.push(t); novos.push(t); n++; }
+    else { const ex=db.tx.find(x=>x.id===t.id); if(ex && ex.pagamento!==t.pagamento){ ex.pagamento=t.pagamento; touch(ex); alts.push(ex); up++; } }
   });
   (PDF_IMPORT.contas||[]).forEach(c=>{ if(!db.contas.includes(c)){ db.contas.push(c); if(filtrosInit) selContas.add(c); }});
-  if(n||up){ saveLocal(); render(); toast((n?n+' importados, ':'')+(up?up+' atualizados para setembro.':'')); } else toast('PDF já importado — nada novo.');
+  if(n||up){ saveLocal(); render(); nuvemCriar(novos); nuvemAtualizar(alts); toast((n?n+' importados, ':'')+(up?up+' atualizados para setembro.':'')); } else toast('PDF já importado — nada novo.');
 }catch(e){ toast('Erro: '+(e.message||e)); } }
 function limparTudo(el){
-  const go=()=>{const mk=mesKey(mesRef);const n=db.tx.filter(t=>(t.vencimento||'').slice(0,7)!==mk).length;db.tx=db.tx.filter(t=>(t.vencimento||'').slice(0,7)!==mk);save();render();toast('Mês limpo. Restam '+n+'.');};
+  const go=()=>{const mk=mesKey(mesRef);const ids=db.tx.filter(t=>(t.vencimento||'').slice(0,7)===mk).map(t=>t.id);const n=db.tx.length-ids.length;const set=new Set(ids);db.tx=db.tx.filter(t=>!set.has(t.id));save();render();nuvemExcluir(ids);toast('Mês limpo. Restam '+n+'.');};
   if(el.dataset.armed==='1'){delete el.dataset.armed;el.classList.remove('btn-armed');go();}
   else{el.dataset.armed='1';el.classList.add('btn-armed');el.textContent='Confirmar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent='🗑 Limpar mês';}},3000);}
 }
