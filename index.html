@@ -257,7 +257,7 @@ Configure <code>SYNC_URL</code> e <code>SYNC_TOKEN</code> no código com a URL /
     <h3>⚙ Configurações — Contas e Repetições</h3>
     <section style="margin-top:8px">
       <h4>🏦 Contas</h4>
-      <div class="addrow"><input id="novaConta" placeholder="Nova conta (ex: Nubank, Carteira)"><button class="btn-steam" onclick="addConta()">Adicionar</button></div>
+      <div class="addrow"><input id="novaConta" placeholder="Nova conta (ex: Nubank, Santander)"><button class="btn-steam" onclick="addConta()">Adicionar</button></div>
       <ul class="lista" id="listaContas"></ul>
     </section>
     <section style="margin-top:18px">
@@ -315,8 +315,8 @@ const PASS_HASH='a76b7f25b6ba5ec51bd9fa42f4143b63c2495996e783baa4d9f8459d314f6ad
 const KEY='minhasContas_db_v2';
 const SYNC_URL='https://script.google.com/macros/s/AKfycbyh0XsWxEeVQ02i5Izuuz1XVhCxmC8GBiQ9Erc8_EAbX7t4YbA9EZ9qSC5Qj0LlGYi5bA/exec'; // ex: https://script.google.com/macros/s/AKfyc.../exec
 const SYNC_TOKEN='EVABRUNAEUTEAMO'; // MESMO token do Code.gs
-const SYNC_POLL_MS=20000;
-let db={tx:[],contas:['Carteira','Banco'],grupos:['Outros']};
+const SYNC_POLL_MS=0; // polling DESATIVADO: sem sync automático; atualiza só após criar/editar/excluir
+let db={tx:[],contas:[],grupos:['Outros']};
 let mesRef=new Date(); mesRef.setDate(1);
 let fStatus='todas', fTipo='';
 let selRep=new Set(), selContas=new Set();
@@ -362,6 +362,19 @@ function mostrarApp(){document.getElementById('lock').style.display='none';docum
     localStorage.setItem('mc_migr_contas_v3','1');
     if(ch) setTimeout(()=>toast('Contas antigas migradas.'),800);
   }
+  // Remove as contas padrão Carteira/Banco (sem apagar lançamentos: move para a primeira conta restante)
+  (function limparContasPadrao(){
+    const alvo=['Carteira','Banco'].filter(c=>db.contas.includes(c));
+    if(!alvo.length) return;
+    const resto=db.contas.filter(c=>!['Carteira','Banco'].includes(c));
+    if(!resto.length) return; // só existem as padrão: mantém para não orfanar lançamentos
+    const dest=resto[0];
+    const mov=db.tx.filter(t=>alvo.includes(t.conta));mov.forEach(t=>{t.conta=dest;touch(t);});
+    db.contas=resto;alvo.forEach(c=>selContas.delete(c));
+    saveLocal();
+    recarregarApos(Promise.all([nuvemAtualizar(mov),nuvemDelContas(alvo)]).then(r=>r.every(Boolean)));
+    setTimeout(()=>toast('Contas Carteira/Banco removidas ('+mov.length+' movido(s) para '+dest+').'),900);
+  })();
   // Removemos a chamada automática de seedPdfImport para começar do zero
   // const n=seedPdfImport(); 
   
@@ -394,8 +407,8 @@ try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify({token:SYNC_
 if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));if(falar)toast('Enviado para o GDrive.');}else{setSyncStatus('Erro ao enviar');if(falar)toast('Erro: '+(j.error||'?'));}
 }catch(e){setSyncStatus('Offline (local)');if(falar)toast('Sem conexão. Salvo local.');}}
 function sincronizarAgora(){puxarNuvem(true,3);}
-function garantir(){if(!db.contas||!db.contas.length)db.contas=['Carteira'];if(!db.grupos)db.grupos=['Outros'];if(!db.reps||!db.reps.length)db.reps=REPS_DEFAULT.map(r=>({...r}));}
-function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);db={tx:d.tx||[],contas:d.contas&&d.contas.length?d.contas:['Carteira','Banco'],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
+function garantir(){if(!db.contas)db.contas=[];if(!db.grupos)db.grupos=['Outros'];if(!db.reps||!db.reps.length)db.reps=REPS_DEFAULT.map(r=>({...r}));}
+function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);db={tx:d.tx||[],contas:d.contas||[],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
 db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});}garantir();}catch(e){}}
 
 // Carregamento inicial da nuvem (usa o pull unificado com retry)
@@ -434,21 +447,29 @@ async function descarregarFila(){if(!syncCfg())return 0;const f=lerFila();if(!f.
   for(const it of f){if(falhou){resto.push(it);continue;}const j=await apiPost(it.op,it.payload);
     if(j&&j.ok){ok++;}else{if(backendAntigo(j)){avisarBackendAntigo();salvarFila(f);return 0;}falhou=true;resto.push(it);}}
   salvarFila(resto);if(ok)setSyncStatus('Fila enviada ☁ ('+ok+') • '+new Date().toLocaleTimeString('pt-BR'));return ok;}
-async function nuvemCriar(items,contas){if(!items.length)return;if(!syncCfg()){enfileirar('create',{items,contas});return;}setSyncStatus('Criando na nuvem…');
+async function nuvemCriar(items,contas){if(!items.length&&!(contas&&contas.length))return true;if(!syncCfg()){enfileirar('create',{items,contas});return false;}setSyncStatus('Criando na nuvem…');
   const j=await apiPost('create',{items,contas});
-  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();}
-  else if(backendAntigo(j)){avisarBackendAntigo();}
-  else{enfileirar('create',{items,contas});toast('Sem conexão — lançamento na fila, será enviado sozinho.');}}
-async function nuvemAtualizar(items){if(!items.length)return;if(!syncCfg()){enfileirar('update',{items});return;}setSyncStatus('Atualizando na nuvem…');
+  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();return true;}
+  else if(backendAntigo(j)){avisarBackendAntigo();return false;}
+  else{enfileirar('create',{items,contas});toast('Sem conexão — lançamento na fila, será enviado sozinho.');return false;}}
+async function nuvemAtualizar(items){if(!items.length)return true;if(!syncCfg()){enfileirar('update',{items});return false;}setSyncStatus('Atualizando na nuvem…');
   const j=await apiPost('update',{items});
-  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();}
-  else if(backendAntigo(j)){avisarBackendAntigo();}
-  else{enfileirar('update',{items});}}
-async function nuvemExcluir(ids){if(!ids.length)return;if(!syncCfg()){enfileirar('delete',{ids});return;}setSyncStatus('Excluindo na nuvem…');
+  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();return true;}
+  else if(backendAntigo(j)){avisarBackendAntigo();return false;}
+  else{enfileirar('update',{items});return false;}}
+async function nuvemExcluir(ids){if(!ids.length)return true;if(!syncCfg()){enfileirar('delete',{ids});return false;}setSyncStatus('Excluindo na nuvem…');
   const j=await apiPost('delete',{ids});
-  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();}
-  else if(backendAntigo(j)){avisarBackendAntigo();}
-  else{enfileirar('delete',{ids});}}
+  if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));descarregarFila();return true;}
+  else if(backendAntigo(j)){avisarBackendAntigo();return false;}
+  else{enfileirar('delete',{ids});return false;}}
+async function nuvemAddContas(names){if(!names.length)return true;if(!syncCfg()){enfileirar('create',{items:[],contas:names});return false;}
+  const j=await apiPost('create',{items:[],contas:names});
+  if(j.ok)return true;else if(backendAntigo(j)){avisarBackendAntigo();return false;}else{enfileirar('create',{items:[],contas:names});return false;}}
+async function nuvemDelContas(names){if(!names.length)return true;if(!syncCfg()){enfileirar('deleteContas',{names});return false;}
+  const j=await apiPost('deleteContas',{names});
+  if(j.ok)return true;else if(backendAntigo(j)){avisarBackendAntigo();return false;}else{enfileirar('deleteContas',{names});return false;}}
+// Após cada operação: UMA consulta à planilha para atualizar o storage local e a tela (sem polling automático)
+function recarregarApos(p){Promise.resolve(p).then(ok=>{if(ok&&syncCfg())puxarNuvem(false,1);}).catch(()=>{});}
 function touch(t){t.updatedAt=Date.now();return t;}
 
 // ===== valor auto-formatado BRL (só números) =====
@@ -523,7 +544,7 @@ function salvarLinha(){
   document.getElementById('qNome').value='';document.getElementById('qValor').value='';qCentavos=0;
   qRepSel().value='unica';qrTipo='unica';
   document.getElementById('qtdWrap').style.display='none';updRepHint();
-  save();render();nuvemCriar(novos);
+  save();render();recarregarApos(nuvemCriar(novos));
   toast(r.tipo==='unica'?'Lançamento registrado! 📝':r.tipo==='fixa'?'Repetição mensal criada! 📌':'Parcelamento criado! 🧾');
 }
 
@@ -569,7 +590,7 @@ function fecharScope(){scopeCb=null;document.getElementById('scopeBg').classList
 document.getElementById('scopeBg').addEventListener('click',e=>{if(e.target.id==='scopeBg')fecharScope();});
 
 // ===== lista / ações =====
-function darBaixa(id){const t=db.tx.find(x=>x.id===id);if(!t)return;t.pagamento=t.pagamento?null:(t.vencimento||hojeISO());touch(t);save();render();nuvemAtualizar([t]);}
+function darBaixa(id){const t=db.tx.find(x=>x.id===id);if(!t)return;t.pagamento=t.pagamento?null:(t.vencimento||hojeISO());touch(t);save();render();recarregarApos(nuvemAtualizar([t]));}
 function excluirTx(el){
   try{
     if(el.dataset.armed==='1'){
@@ -587,13 +608,13 @@ function excluirTx(el){
             const ids=[t.id].concat(esc==='grupo'?abertas.map(f=>f.id):[]);
             const set=new Set(ids);
             db.tx=db.tx.filter(x=>!set.has(x.id));
-            save();render();nuvemExcluir(ids);toast('Excluído.');
+            save();render();recarregarApos(nuvemExcluir(ids));toast('Excluído.');
           }catch(e){ console.error('excluir grupo erro',e); toast('Erro ao excluir grupo: '+(e.message||e)); }
         });
         delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent=el.dataset.label||'🗑';
         return;
       }
-      try{ const id=t.id; db.tx=db.tx.filter(x=>x.id!==id); save();render();nuvemExcluir([id]);toast('Excluído.'); }
+      try{ const id=t.id; db.tx=db.tx.filter(x=>x.id!==id); save();render();recarregarApos(nuvemExcluir([id]));toast('Excluído.'); }
       catch(e){ console.error('excluir simples erro',e); toast('Erro ao excluir: '+(e.message||e)); }
     } else {
       el.dataset.armed='1';el.dataset.label=el.textContent;el.classList.add('btn-armed');el.textContent='Confirmar?';
@@ -601,7 +622,7 @@ function excluirTx(el){
     }
   }catch(e){ console.error('excluirTx erro',e); toast('Erro excluirTx: '+(e.message||e)); }
 }
-function excluirForcado(id){ try{ db.tx=db.tx.filter(x=>x.id!==id); save();render();nuvemExcluir([id]); toast('Excluído forçado.'); }catch(e){ toast('Erro forçado: '+(e.message||e)); } }
+function excluirForcado(id){ try{ db.tx=db.tx.filter(x=>x.id!==id); save();render();recarregarApos(nuvemExcluir([id])); toast('Excluído forçado.'); }catch(e){ toast('Erro forçado: '+(e.message||e)); } }
 function abrirEdicao(id){
   const t=db.tx.find(x=>x.id===id);if(!t)return;
   const fut=futurosDe(t);
@@ -655,7 +676,7 @@ function salvarEdicao(){
   editarIds=null;
   if(!ok)return;
   const afetados=ids.map(fid=>db.tx.find(x=>x.id===fid)).filter(Boolean);
-  save();fecharEdicao();render();nuvemAtualizar(afetados);toast('Atualizado!');
+  save();fecharEdicao();render();recarregarApos(nuvemAtualizar(afetados));toast('Atualizado!');
 }
 
 // ===== config (criar / editar / excluir) =====
@@ -663,25 +684,25 @@ function abrirConfig(){renderCfg();document.getElementById('cfgBg').classList.ad
 function fecharConfig(){document.getElementById('cfgBg').classList.remove('open');}
 document.getElementById('cfgBg').addEventListener('click',e=>{if(e.target.id==='cfgBg')fecharConfig();});
 document.getElementById('editBg').addEventListener('click',e=>{if(e.target.id==='editBg')fecharEdicao();});
-function addConta(){const v=document.getElementById('novaConta').value.trim();if(!v){toast('Digite a conta.');return;}if(db.contas.includes(v)){toast('Já existe.');return;}db.contas.push(v);selContas.add(v);document.getElementById('novaConta').value='';save();render();renderCfg();toast('Conta criada!');}
+function addConta(){const v=document.getElementById('novaConta').value.trim();if(!v){toast('Digite a conta.');return;}if(db.contas.includes(v)){toast('Já existe.');return;}db.contas.push(v);selContas.add(v);document.getElementById('novaConta').value='';save();render();renderCfg();recarregarApos(nuvemAddContas([v]));toast('Conta criada!');}
 function delItem(el){
   if(el.dataset.armed!=='1'){el.dataset.armed='1';el.dataset.label=el.textContent;el.classList.add('btn-armed');el.textContent='Confirmar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent=el.dataset.label||'Excluir';}},3000);return;}
   const nome=el.dataset.v;
   if(db.contas.length<=1){toast('Precisa de ao menos 1 conta.');renderCfg();return;}
   const uso=db.tx.filter(t=>t.conta===nome).length;
   const destino=db.contas.find(x=>x!==nome);
-  db.tx.forEach(t=>{if(t.conta===nome){t.conta=destino;touch(t);}});
+  const mov=db.tx.filter(t=>t.conta===nome);mov.forEach(t=>{t.conta=destino;touch(t);});
   db.contas=db.contas.filter(x=>x!==nome);selContas.delete(nome);
-  save();render();renderCfg();toast(uso?uso+' movido(s) para '+destino+'.':'Conta excluída.');
+  save();render();renderCfg();recarregarApos(Promise.all([nuvemAtualizar(mov),nuvemDelContas([nome])]).then(r=>r.every(Boolean)));toast(uso?uso+' movido(s) para '+destino+'.':'Conta excluída.');
 }
 function renomear(nome){
   const novo=prompt('Renomear "'+nome+'" para:',nome);
   if(novo==null)return;const v=novo.trim();if(!v||v===nome)return;
   if(db.contas.includes(v)){toast('Esse nome já existe.');return;}
   db.contas=db.contas.map(x=>x===nome?v:x);
-  db.tx.forEach(t=>{if(t.conta===nome){t.conta=v;touch(t);}});
+  const mov=db.tx.filter(t=>t.conta===nome);mov.forEach(t=>{t.conta=v;touch(t);});
   if(selContas.has(nome)){selContas.delete(nome);selContas.add(v);}
-  save();render();renderCfg();toast('Renomeado!');
+  save();render();renderCfg();recarregarApos(Promise.all([nuvemAtualizar(mov),nuvemDelContas([nome]),nuvemAddContas([v])]).then(r=>r.every(Boolean)));toast('Renomeado!');
 }
 function addRep(){
   const nome=document.getElementById('novaRep').value.trim();
@@ -776,17 +797,17 @@ function render(){
 // ===== utilidades =====
 function exportarCSV(){const rows=[['Nome','Tipo','Conta','Data','Valor','Consolidada']];db.tx.forEach(t=>rows.push([t.descricao,t.tipo,t.conta,t.vencimento,String(t.valor).replace('.',','),t.pagamento?'SIM':'NAO']));const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='contas.csv';a.click();}
 function backupJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));a.download='backup-contas.json';a.click();}
-function restaurarBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.tx){db={tx:d.tx,contas:d.contas||['Carteira'],grupos:d.grupos||['Outros']};save();render();empurrarNuvem(true);toast('Backup restaurado!');}else toast('Arquivo inválido.');}catch(e){toast('Arquivo inválido.');}};r.readAsText(f);inp.value='';}
+function restaurarBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.tx){db={tx:d.tx,contas:d.contas||[],grupos:d.grupos||['Outros']};save();render();empurrarNuvem(true);toast('Backup restaurado!');}else toast('Arquivo inválido.');}catch(e){toast('Arquivo inválido.');}};r.readAsText(f);inp.value='';}
 function forcarImportPdf(){ try{ const have=new Set(db.tx.map(t=>t.id)); let n=0, up=0; const novos=[],alts=[];
   if(typeof PDF_IMPORT!=='undefined'&&PDF_IMPORT.tx) PDF_IMPORT.tx.forEach(t=>{
     if(!have.has(t.id)){ db.tx.push(t); novos.push(t); n++; }
     else { const ex=db.tx.find(x=>x.id===t.id); if(ex && ex.pagamento!==t.pagamento){ ex.pagamento=t.pagamento; touch(ex); alts.push(ex); up++; } }
   });
   (PDF_IMPORT.contas||[]).forEach(c=>{ if(!db.contas.includes(c)){ db.contas.push(c); if(filtrosInit) selContas.add(c); }});
-  if(n||up){ saveLocal(); render(); nuvemCriar(novos); nuvemAtualizar(alts); toast((n?n+' importados, ':'')+(up?up+' atualizados para setembro.':'')); } else toast('PDF já importado — nada novo.');
+  if(n||up){ saveLocal(); render(); recarregarApos(Promise.all([nuvemCriar(novos),nuvemAtualizar(alts)]).then(r=>r.every(Boolean))); toast((n?n+' importados, ':'')+(up?up+' atualizados para setembro.':'')); } else toast('PDF já importado — nada novo.');
 }catch(e){ toast('Erro: '+(e.message||e)); } }
 function limparTudo(el){
-  const go=()=>{const mk=mesKey(mesRef);const ids=db.tx.filter(t=>(t.vencimento||'').slice(0,7)===mk).map(t=>t.id);const n=db.tx.length-ids.length;const set=new Set(ids);db.tx=db.tx.filter(t=>!set.has(t.id));save();render();nuvemExcluir(ids);toast('Mês limpo. Restam '+n+'.');};
+  const go=()=>{const mk=mesKey(mesRef);const ids=db.tx.filter(t=>(t.vencimento||'').slice(0,7)===mk).map(t=>t.id);const n=db.tx.length-ids.length;const set=new Set(ids);db.tx=db.tx.filter(t=>!set.has(t.id));save();render();recarregarApos(nuvemExcluir(ids));toast('Mês limpo. Restam '+n+'.');};
   if(el.dataset.armed==='1'){delete el.dataset.armed;el.classList.remove('btn-armed');go();}
   else{el.dataset.armed='1';el.classList.add('btn-armed');el.textContent='Confirmar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent='🗑 Limpar mês';}},3000);}
 }
