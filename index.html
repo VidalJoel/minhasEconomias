@@ -602,32 +602,29 @@ document.getElementById('scopeBg').addEventListener('click',e=>{if(e.target.id==
 function darBaixa(id){const t=db.tx.find(x=>x.id===id);if(!t)return;t.pagamento=t.pagamento?null:(t.vencimento||hojeISO());touch(t);save();render();recarregarApos(nuvemAtualizar([t]));}
 function excluirTx(el){
   try{
-    if(el.dataset.armed==='1'){
-      const t=db.tx.find(x=>x.id===el.dataset.id);if(!t){toast('Não encontrado: '+el.dataset.id);return;}
-      let fut=[]; try{ fut=futurosDe(t); }catch(e){ console.error('futurosDe erro',e); toast('Erro futurosDe: '+(e.message||e)); fut=[]; }
-      if(fut.length){
-        const abertas=fut.filter(f=>!f.pagamento);
-        const rot=ehParcelada(t)?'parcela':'mensalidade';
-        perguntarEscopo(
-          'Esta conta "'+t.descricao+'" tem '+fut.length+' '+rot+'(s) futura(s) ('+abertas.length+' não consolidada(s)). O que deseja excluir?',
-          'Somente esta',
-          'Esta + futuras não consolidadas ('+abertas.length+')',
-          esc=>{
-          try{
-            const ids=[t.id].concat(esc==='grupo'?abertas.map(f=>f.id):[]);
-            const set=new Set(ids);
-            db.tx=db.tx.filter(x=>!set.has(x.id));
-            save();render();recarregarApos(nuvemExcluir(ids));toast('Excluído.');
-          }catch(e){ console.error('excluir grupo erro',e); toast('Erro ao excluir grupo: '+(e.message||e)); }
-        });
-        delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent=el.dataset.label||'🗑';
-        return;
-      }
-      try{ const id=t.id; db.tx=db.tx.filter(x=>x.id!==id); save();render();recarregarApos(nuvemExcluir([id]));toast('Excluído.'); }
+    const id = el.dataset.id;
+    const t=db.tx.find(x=>x.id===id);if(!t){toast('Não encontrado: '+id);return;}
+    let fut=[]; try{ fut=futurosDe(t); }catch(e){ console.error('futurosDe erro',e); fut=[]; }
+    if(fut.length){
+      const abertas=fut.filter(f=>!f.pagamento);
+      const rot=ehParcelada(t)?'parcela':'mensalidade';
+      perguntarEscopo(
+        'Esta conta "'+t.descricao+'" tem '+fut.length+' '+rot+'(s) futura(s) ('+abertas.length+' não consolidada(s)). O que deseja excluir?',
+        'Somente esta',
+        'Esta + futuras não consolidadas ('+abertas.length+')',
+        esc=>{
+        try{
+          const ids=[t.id].concat(esc==='grupo'?abertas.map(f=>f.id):[]);
+          const set=new Set(ids);
+          db.tx=db.tx.filter(x=>!set.has(x.id));
+          save();render();recarregarApos(nuvemExcluir(ids));toast('Excluído.');
+        }catch(e){ console.error('excluir grupo erro',e); toast('Erro ao excluir grupo: '+(e.message||e)); }
+      });
+      return;
+    }
+    if(confirm('Tem certeza que deseja excluir esta transação?')) {
+      try{ db.tx=db.tx.filter(x=>x.id!==id); save();render();recarregarApos(nuvemExcluir([id]));toast('Excluído.'); }
       catch(e){ console.error('excluir simples erro',e); toast('Erro ao excluir: '+(e.message||e)); }
-    } else {
-      el.dataset.armed='1';el.dataset.label=el.textContent;el.classList.add('btn-armed');el.textContent='Confirmar?';
-      setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent=el.dataset.label||'🗑';}},3000);
     }
   }catch(e){ console.error('excluirTx erro',e); toast('Erro excluirTx: '+(e.message||e)); }
 }
@@ -695,14 +692,15 @@ document.getElementById('cfgBg').addEventListener('click',e=>{if(e.target.id==='
 document.getElementById('editBg').addEventListener('click',e=>{if(e.target.id==='editBg')fecharEdicao();});
 function addConta(){const v=document.getElementById('novaConta').value.trim();if(!v){toast('Digite a conta.');return;}if(db.contas.includes(v)){toast('Já existe.');return;}db.contas.push(v);selContas.add(v);document.getElementById('novaConta').value='';save();render();renderCfg();recarregarApos(nuvemAddContas([v]));toast('Conta criada!');}
 function delItem(el){
-  if(el.dataset.armed!=='1'){el.dataset.armed='1';el.dataset.label=el.textContent;el.classList.add('btn-armed');el.textContent='Confirmar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent=el.dataset.label||'Excluir';}},3000);return;}
   const nome=el.dataset.v;
+  if(confirm('Tem certeza que deseja excluir a conta "'+nome+'"?')){
   if(db.contas.length<=1){toast('Precisa de ao menos 1 conta.');renderCfg();return;}
   const uso=db.tx.filter(t=>t.conta===nome).length;
   const destino=db.contas.find(x=>x!==nome);
   const mov=db.tx.filter(t=>t.conta===nome);mov.forEach(t=>{t.conta=destino;touch(t);});
   db.contas=db.contas.filter(x=>x!==nome);selContas.delete(nome);
   save();render();renderCfg();recarregarApos(Promise.all([nuvemAtualizar(mov),nuvemDelContas([nome])]).then(r=>r.every(Boolean)));toast(uso?uso+' movido(s) para '+destino+'.':'Conta excluída.');
+  }
 }
 function renomear(nome){
   const novo=prompt('Renomear "'+nome+'" para:',nome);
@@ -730,14 +728,15 @@ function renomearRep(id){
   r.nome=v;save();render();renderCfg();toast('Renomeado!');
 }
 function delRep(el){
-  if(el.dataset.armed!=='1'){el.dataset.armed='1';el.dataset.label=el.textContent;el.classList.add('btn-armed');el.textContent='Confirmar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent=el.dataset.label||'Excluir';}},3000);return;}
   const id=el.dataset.v;
+  if(confirm('Tem certeza que deseja excluir esta repetição?')){
   if(id==='unica'){toast('A repetição ÚNICA não pode ser excluída.');renderCfg();return;}
   db.reps=db.reps.filter(r=>r.id!==id);
   db.tx.forEach(t=>{if(t.rep===id){t.rep='unica';touch(t);}});
   selRep.delete(id);
   garantir();
   save();render();renderCfg();toast('Repetição excluída.');
+  }
 }
 function renderCfg(){
   document.getElementById('listaContas').innerHTML=db.contas.map(c=>'<li><b>🏦 '+escH(c)+'</b><span style="display:flex;gap:6px"><button class="btn-ghost btn-small" onclick="renomear(\''+escH(c).replace(/'/g,"\\'")+'\')">✏ Editar</button><button class="btn-ghost btn-small" data-v="'+escH(c)+'" onclick="delItem(this)">Excluir</button></span></li>').join('');
@@ -824,8 +823,9 @@ function forcarImportPdf(){ try{ const have=new Set(db.tx.map(t=>t.id)); let n=0
 }catch(e){ toast('Erro: '+(e.message||e)); } }
 function limparTudo(el){
   const go=()=>{const mk=mesKey(mesRef);const ids=db.tx.filter(t=>(t.vencimento||'').slice(0,7)===mk).map(t=>t.id);const n=db.tx.length-ids.length;const set=new Set(ids);db.tx=db.tx.filter(t=>!set.has(t.id));save();render();recarregarApos(nuvemExcluir(ids));toast('Mês limpo. Restam '+n+'.');};
-  if(el.dataset.armed==='1'){delete el.dataset.armed;el.classList.remove('btn-armed');go();}
-  else{el.dataset.armed='1';el.classList.add('btn-armed');el.textContent='Confirmar?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.classList.remove('btn-armed');el.textContent='🗑 Limpar mês';}},3000);}
+  if(confirm('Tem certeza que deseja limpar as transações desse mês?')) {
+    go();
+  }
 }
 </script>
 </body>
