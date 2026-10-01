@@ -136,6 +136,13 @@ footer code{color:var(--accent)}
 </style>
 </head>
 <body>
+<!-- OVERLAY DE AGUARDE -->
+<div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; flex-direction:column; gap:12px; color:#fff;">
+  <div style="font-size:40px; animation: spinAguarde 1.2s linear infinite;">⏳</div>
+  <h2 style="font-size:18px; margin:0;">Sincronizando...</h2>
+  <p style="font-size:13px; color:var(--muted); margin:0;">Aguarde até a conclusão da operação.</p>
+</div>
+<style>@keyframes spinAguarde { 100% { transform: rotate(360deg); } }</style>
 
 <div id="lock">
   <div class="lock-box">
@@ -407,7 +414,7 @@ async function empurrarNuvem(falar){if(!syncCfg())return;setSyncStatus('Enviando
 try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify({token:SYNC_TOKEN,action:'push',data:db})});const j=await r.json();
 if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'));if(falar)toast('Enviado para o GDrive.');}else{setSyncStatus('Erro ao enviar');if(falar)toast('Erro: '+(j.error||'?'));}
 }catch(e){setSyncStatus('Offline (local)');if(falar)toast('Sem conexão. Salvo local.');}}
-function sincronizarAgora(){puxarNuvem(true,3);}
+async function sincronizarAgora(){ mostrarAguarde(); try{ await puxarNuvem(true,3); }finally{ esconderAguarde(); } }
 function garantir(){if(!db.contas)db.contas=[];if(!db.grupos)db.grupos=['Outros'];if(!db.reps||!db.reps.length)db.reps=REPS_DEFAULT.map(r=>({...r}));}
 function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);db={tx:d.tx||[],contas:d.contas||[],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
 db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});db.tx.forEach(normalizarTx);db.contas=mergeList(db.contas||[],db.tx.map(t=>t.conta));}garantir();}catch(e){}}
@@ -470,7 +477,14 @@ async function nuvemDelContas(names){if(!names.length)return true;if(!syncCfg())
   const j=await apiPost('deleteContas',{names});
   if(j.ok)return true;else if(backendAntigo(j)){avisarBackendAntigo();return false;}else{enfileirar('deleteContas',{names});return false;}}
 // Após cada operação: UMA consulta à planilha para atualizar o storage local e a tela (sem polling automático)
-function recarregarApos(p){Promise.resolve(p).then(ok=>{if(ok&&syncCfg())puxarNuvem(false,1);}).catch(()=>{});}
+let waitCount=0;
+function mostrarAguarde(){ waitCount++; const el=document.getElementById('loadingOverlay'); if(el)el.style.display='flex'; }
+function esconderAguarde(){ waitCount=Math.max(0,waitCount-1); if(waitCount===0){const el=document.getElementById('loadingOverlay'); if(el)el.style.display='none';} }
+function recarregarApos(p){
+  mostrarAguarde();
+  Promise.resolve(p).then(async ok=>{ if(ok&&syncCfg()) await puxarNuvem(false,1); }).catch(()=>{})
+  .finally(()=>esconderAguarde());
+}
 function touch(t){t.updatedAt=Date.now();return t;}
 
 // ===== valor auto-formatado BRL (só números) =====
