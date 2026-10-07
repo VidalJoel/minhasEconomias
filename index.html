@@ -393,6 +393,40 @@ function mostrarApp(){document.getElementById('lock').style.display='none';docum
   // Removemos a chamada automática de seedPdfImport para começar do zero
   // const n=seedPdfImport(); 
   
+  // Auto-correção preventiva: redistribui parcelas e fixas que tenham ficado no mesmo mês
+  (function sanitizarDatasRepeticoes(){
+    const mapBase = new Map();
+    db.tx.forEach(t => {
+      const m = (t.id || '').match(/^(id\d+)_(\d+)$/);
+      if(m){
+        const base = m[1];
+        if(!mapBase.has(base)) mapBase.set(base, []);
+        mapBase.get(base).push({ t, idx: parseInt(m[2], 10) });
+      }
+    });
+    let mudou = false;
+    mapBase.forEach((itens) => {
+      if(itens.length > 1){
+        itens.sort((a,b) => a.idx - b.idx);
+        const datas = new Set(itens.map(x => x.t.vencimento));
+        if(datas.size === 1 && itens.length > 2){
+          const dataInicial = itens[0].t.vencimento;
+          itens.forEach(({ t, idx }) => {
+            const dataCorreta = addMonthsISO(dataInicial, idx);
+            if(t.vencimento !== dataCorreta){
+              t.vencimento = dataCorreta;
+              touch(t);
+              mudou = true;
+            }
+          });
+        }
+      }
+    });
+    if(mudou){
+      saveLocal();
+    }
+  })();
+
   mesRef=new Date(); // Inicia no mês atual
   initValor();render();sincInicial();descarregarFila();puxarNuvem(false,3);
 }
@@ -735,24 +769,88 @@ function salvarEdicao(){
   const id=document.getElementById('eId').value;
   const t=db.tx.find(x=>x.id===id);if(!t)return;
   const ids=(editarIds&&editarIds.length)?editarIds:[t.id];
-  const aplica=f=>{
-    f.tipo=document.getElementById('eTipo').value;
-    f.descricao=document.getElementById('eNome').value.trim()||f.descricao;
-    f.rep=document.getElementById('eRep').value;
-    f.conta=document.getElementById('eConta').value;
-    f.valor=eCentavos/100;
-    f.vencimento=document.getElementById('eData').value||hojeISO();
-    const pg=document.getElementById('ePaga').checked;
-    f.pagamento=pg?(f.pagamento||f.vencimento):null;
-    if(!(f.valor>0)){toast('Valor inválido.');return false;}
-    touch(f);return true;
-  };
-  let ok=true;
-  ids.forEach(fid=>{const f=db.tx.find(x=>x.id===fid);if(f&&!aplica(f))ok=false;});
+
+  const novoTipo=document.getElementById('eTipo').value;
+  const novoNome=document.getElementById('eNome').value.trim()||t.descricao;
+  const novaRep=document.getElementById('eRep').value;
+  const novaConta=document.getElementById('eConta').value;
+  const novoValor=eCentavos/100;
+  const novaData=document.getElementById('eData').value||hojeISO();
+  const novoPaga=document.getElementById('ePaga').checked;
+
+  if(!(novoValor>0)){toast('Valor inválido.');return;}
+
+  const novoDia=parseInt(novaData.split('-')[2],10);
+  const afetados=[];
+
+  ids.forEach((fid, index)=>{
+    const f=db.tx.find(x=>x.id===fid);
+    if(!f)return;
+
+    if(f.id===t.id){
+      // Cobrança atual selecionada
+      f.tipo=novoTipo;
+      f.descricao=novoNome;
+      f.rep=novaRep;
+      f.conta=novaConta;
+      f.valor=novoValor;
+      f.vencimento=novaData;
+      f.pagamento=novoPaga?(f.pagamento||f.vencimento):null;
+      touch(f);
+      afetados.push(f);
+    }else{
+      // Cobranças futuras do grupo (parcelas ou mensalidades)
+      f.tipo=novoTipo;
+      f.rep=novaRep;
+      f.conta=novaConta;
+      f.valor=novoValor;
+
+      // Preserva a numeração da parcela (X/total) ou a tag [Fixa]
+      const matchParc=String(f.descricao||'').match(/\(\s*(\d+)\s*\/\s*(\d+)\s*\)/);
+      const matchFixa=/\[fixa\]/i.test(f.descricao||'');
+      let baseLimpa=novoNome.replace(/\s*\[fixa\]/gi,'').replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)/,'').trim();
+      if(matchParc){
+        f.descricao=`${baseLimpa} (${matchParc[1]}/${matchParc[2]})`;
+      }else if(matchFixa){
+        f.descricao=`${baseLimpa} [Fixa]`;
+      }else{
+        f.descricao=novoNome;
+      }
+
+      // PRESERVA O MÊS E ANO DE CADA PARCELA FUTURA! Ajusta somente o dia de vencimento
+      if(f.vencimento&&/^\d{4}-\d{2}-\d{2}$/.test(f.vencimento)){
+        const p=f.vencimento.split('-');
+        let ano=parseInt(p[0],10);
+        let mes=parseInt(p[1],10);
+
+        // Se o registro estava com a data acidentalmente igual ao mês de t (por bug anterior),
+        // calcula o mês correto somando a diferença de índice
+        const [anoT,mesT]=(t.vencimento||novaData).split('-').map(Number);
+        if(ano===anoT&&mes===mesT&&index>0){
+          const d=new Date(anoT,mesT-1+index,1);
+          ano=d.getFullYear();
+          mes=d.getMonth()+1;
+        }
+
+        const maxDia=new Date(ano,mes,0).getDate();
+        const diaFinal=Math.min(novoDia,maxDia);
+        f.vencimento=`${ano}-${String(mes).padStart(2,'0')}-${String(diaFinal).padStart(2,'0')}`;
+      }else{
+        f.vencimento=addMonthsISO(novaData,index);
+      }
+
+      // Não marca parcelas futuras como pagas
+      touch(f);
+      afetados.push(f);
+    }
+  });
+
   editarIds=null;
-  if(!ok)return;
-  const afetados=ids.map(fid=>db.tx.find(x=>x.id===fid)).filter(Boolean);
-  save();fecharEdicao();render();recarregarApos(nuvemAtualizar(afetados));toast('Atualizado!');
+  save();
+  fecharEdicao();
+  render();
+  recarregarApos(nuvemAtualizar(afetados));
+  toast('Atualizado! 💾');
 }
 
 // ===== config (criar / editar / excluir) =====
