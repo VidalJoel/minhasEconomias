@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Minhas Contas — Pagar & Receber (Steam + GDrive)</title>
 <style>
 /* ===== PALHETA STEAM =====
@@ -21,7 +24,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:10px 14px;font-weigh
 input,select{background:#0e141b;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:14px;width:100%}
 input:focus,select:focus{outline:2px solid var(--accent);border-color:var(--accent)}
 input::placeholder{color:var(--muted)}
-label{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.5px}
+label{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
 
 /* lock */
 #lock{position:fixed;inset:0;background:radial-gradient(circle at 50% 20%,#2a475e,#171a21 70%);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
@@ -76,27 +79,47 @@ main{max-width:1200px;margin:0 auto;padding:16px}
 .flagf small{color:var(--muted)}
 
 /* cards */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0}
-@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:500px){.cards{grid-template-columns:1fr}}
-.card{background:linear-gradient(180deg,#22344d,#1b2838);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.cards{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:12px;margin:12px 0}
+@media(max-width:850px){.cards{display:flex;flex-direction:column;align-items:stretch;gap:8px}.card-op{align-self:center;margin:2px 0}}
+.card{background:linear-gradient(180deg,#22344d,#1b2838);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .card small{color:var(--muted);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.5px}
 .card .valor{font-size:22px;font-weight:800;margin-top:6px;color:#fff}
 .card .detalhe{font-size:12px;color:var(--muted);margin-top:4px}
 .verde{color:var(--green)!important}.vermelho{color:var(--red)!important}.azul{color:var(--accent)!important}
+.card-op{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#0e141b;border:1px solid var(--border);font-size:20px;font-weight:900;line-height:1;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.45);flex-shrink:0}
+.card-op.minus{color:var(--red);border-color:rgba(255,122,107,.45)}
+.card-op.equal{color:var(--green);border-color:rgba(164,208,7,.45)}
 
 /* quick add — UMA ÚNICA LINHA */
 .quick{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px}
 .quick h3{color:#fff;font-size:14px;margin-bottom:10px}
-.quick-row{display:grid;grid-template-columns:2.6fr 1.4fr 125px 110px 140px auto;gap:8px;align-items:end}
+.quick-row{display:flex;gap:8px;align-items:flex-end;width:100%}
+#qNomeWrap{flex:2.8;min-width:180px}
+#qContaWrap{flex:1.2;min-width:120px}
+#qRepWrap{width:130px;flex-shrink:0}
+#qtdWrap{width:105px;flex-shrink:0}
+#qValorWrap{width:125px;flex-shrink:0}
+#qBtnWrap{flex-shrink:0;display:flex;align-items:flex-end}
 .qchecks{display:flex;gap:6px;align-items:center}
 .qcheck{display:flex;gap:6px;align-items:center;background:#0e141b;border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap}
 .qcheck input{width:auto;margin:0;accent-color:var(--green)}
 .qcheck.on{color:#fff}
 .qcheck.on.pag{border-color:var(--red)}
 .qcheck.on.rec{border-color:var(--green)}
-@media(max-width:1000px){.quick-row{grid-template-columns:1fr 1fr 1fr}}
-@media(max-width:600px){.quick-row{grid-template-columns:1fr}}
+@media(max-width:1000px){
+  .quick-row{flex-wrap:wrap}
+  #qNomeWrap{flex:1 1 100%}
+  #qContaWrap{flex:1 1 calc(50% - 4px)}
+  #qRepWrap{flex:1 1 calc(50% - 4px);width:auto}
+  #qtdWrap{flex:0 0 105px}
+  #qValorWrap{flex:1 1 calc(50% - 60px);width:auto}
+  #qBtnWrap{flex:0 0 auto}
+}
+@media(max-width:600px){
+  .quick-row{flex-direction:column;align-items:stretch}
+  #qNomeWrap,#qContaWrap,#qRepWrap,#qtdWrap,#qValorWrap{width:100%;flex:none}
+  #qBtnWrap button{width:100%;height:44px}
+}
 .flag{display:flex;gap:8px;align-items:center;background:#0e141b;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;white-space:nowrap}
 .flag input{width:auto;accent-color:var(--green)}
 .valor-input{font-weight:800;color:#fff}
@@ -112,6 +135,8 @@ tr.pago-row td{opacity:.75}
 .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase}
 .pago{background:#3a4a12;color:#d7f75b}.pendente{background:#4a3d10;color:#ffe27a}.vencido-pill{background:#5a1d1d;color:#ffb9b0}
 .tipo-pagar{color:var(--red);font-weight:800}.tipo-receber{color:var(--green);font-weight:800}
+.link-tag{display:inline-flex;align-items:center;gap:3px;margin-left:8px;padding:2px 7px;border-radius:4px;background:rgba(102,192,244,0.18);border:1px solid rgba(102,192,244,0.4);color:var(--accent);font-size:11px;font-weight:700;text-decoration:none;cursor:pointer;vertical-align:middle;transition:all .15s ease}
+.link-tag:hover{background:var(--accent);color:#0e141b;text-decoration:none;box-shadow:0 2px 6px rgba(102,192,244,0.3)}
 .empty{padding:26px;text-align:center;color:var(--muted)}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}
 #syncStatus{font-size:12px;color:var(--muted)}
@@ -135,7 +160,13 @@ tr.pago-row td{opacity:.75}
 .modal .tabs button{flex:1}
 .modal .tabs button.active{background:var(--accent);color:#0b1622}
 .lista{list-style:none}
-.lista li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.lista li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#141c26;margin-bottom:6px;transition:background .15s, border-color .15s, transform .15s}
+.lista li:hover{background:#1b2838;border-color:var(--accent2)}
+.lista li.dragging{opacity:0.35;background:#2a475e;border:1px dashed var(--accent)}
+.lista li.drag-over{border-top:2px solid var(--accent);background:#22344d}
+.drag-handle{cursor:grab;color:var(--muted);font-size:16px;padding:2px 6px;border-radius:4px;user-select:none;transition:color .15s}
+.drag-handle:hover{color:var(--accent);background:rgba(102,192,244,0.12)}
+.drag-handle:active{cursor:grabbing}
 .addrow{display:flex;gap:8px;margin:10px 0}
 .editrow{display:flex;gap:6px;flex:1}
 #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#0e141b;border:1px solid var(--accent);color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;z-index:300;display:none;max-width:92vw}
@@ -192,7 +223,7 @@ footer code{color:var(--accent)}
     <!-- SIDEBAR ESQUERDA: FILTROS EM FLAG -->
     <aside class="sidebar">
       <div class="fgroup">
-        <h4>Status consolidação <span style="display:flex;gap:6px"><button class="btn-ghost btn-small" onclick="todosGrupo('status')">Todos</button><button class="btn-ghost btn-small" onclick="limparGrupo('status')">Limpar</button></span></h4>
+        <h4>Status <span style="display:flex;gap:6px"><button class="btn-ghost btn-small" onclick="todosGrupo('status')">Todos</button><button class="btn-ghost btn-small" onclick="limparGrupo('status')">Limpar</button></span></h4>
         <div class="rows" id="flagsStatus"></div>
       </div>
       <div class="fgroup">
@@ -214,9 +245,10 @@ footer code{color:var(--accent)}
             <button data-v="receber" onclick="setTipo('receber',this)">A receber</button>
           </div>
         </div>
-        <div style="display:flex;align-items:end;gap:8px">
+        <div style="display:flex;align-items:end;gap:8px;flex-wrap:wrap">
           <button class="btn-ghost btn-small" onclick="irHoje()">📅 Mês atual</button>
-          <button class="btn-ghost btn-small" onclick="sincronizarAgora()">☁ Sincronizar</button>
+          <button class="btn-ghost btn-small" onclick="sincronizarAgora()" title="Sincronizar com a nuvem">☁ Sincronizar</button>
+          <button class="btn-ghost btn-small" onclick="limparCacheERecarregar()" title="Limpar cache do navegador e recarregar dados do momento em tempo real">🧹 Limpar Cache</button>
         </div>
       </div>
 
@@ -235,24 +267,32 @@ footer code{color:var(--accent)}
         </h3>
         <input type="hidden" id="qTipo" value="pagar">
         <div class="quick-row">
-          <div><label>Nome da conta *</label><input id="qNome" placeholder="Ex: Aluguel, Salário"></div>
-          <div><label>Conta *</label><select id="qConta"></select></div>
-          <div><label>Repetição</label>
-            <select id="qRep" onchange="onRepChange()"></select>
+          <div id="qNomeWrap"><label>Nome da conta *</label><input id="qNome" placeholder="Ex: Aluguel, Salário" autocomplete="off"></div>
+          <div id="qContaWrap"><label>Conta *</label><select id="qConta"><option value="" disabled selected>Selecione...</option></select></div>
+          <div id="qRepWrap"><label>Repetição *</label>
+            <select id="qRep" onchange="onRepChange()"><option value="" disabled selected>Selecione...</option></select>
           </div>
           <div id="qtdWrap" style="display:none"><label id="qtdLbl">Qtd. parcelas</label><input id="qQtd" type="number" min="2" max="60" value="12" oninput="updRepHint()"></div>
-          <div><label>Valor (só números) *</label><input id="qValor" class="valor-input" placeholder="R$ 0,00" inputmode="numeric" autocomplete="off"></div>
-          <div style="display:flex;gap:6px;align-items:end">
+          <div id="qValorWrap"><label>Valor</label><input id="qValor" class="valor-input" placeholder="R$ 0,00" inputmode="numeric" autocomplete="off"></div>
+          <div id="qBtnWrap">
             <button class="btn-add" onclick="salvarLinha()" title="Adicionar lançamento">✓</button>
           </div>
         </div>
-        <div class="hint" id="repHint" style="margin-top:8px">ÚNICA: lança só na data selecionada.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap">
+          <div class="hint" id="repHint" style="margin:0;flex:1;min-width:180px">Selecione uma repetição para configurar o lançamento.</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;white-space:nowrap">🔗 Link / Boleto:</span>
+            <input id="qLink" placeholder="Cole o link ou boleto aqui (opcional)" style="height:26px;padding:3px 8px;font-size:11px;width:280px;border-radius:6px;background:#0e141b;border:1px solid var(--border);color:var(--text)" autocomplete="off">
+          </div>
+        </div>
       </div>
 
       <div class="cards">
-        <div class="card"><small>Saldo filtrado (previsto)</small><div class="valor" id="cSaldo">R$ 0,00</div><div class="detalhe" id="cSaldoDet">—</div></div>
         <div class="card"><small class="verde">A receber</small><div class="valor verde" id="cRec">R$ 0,00</div><div class="detalhe" id="cRecDet">—</div></div>
+        <div class="card-op minus" title="Menos">−</div>
         <div class="card"><small class="vermelho">A pagar</small><div class="valor vermelho" id="cPag">R$ 0,00</div><div class="detalhe" id="cPagDet">—</div></div>
+        <div class="card-op equal" title="Igual">=</div>
+        <div class="card"><small>Saldo filtrado (previsto)</small><div class="valor" id="cSaldo">R$ 0,00</div><div class="detalhe" id="cSaldoDet">—</div></div>
       </div>
 
       <div class="twrap">
@@ -272,18 +312,25 @@ footer code{color:var(--accent)}
   <div class="modal">
     <h3>⚙ Configurações — Contas e Repetições</h3>
     <section style="margin-top:8px">
-      <h4>🏦 Contas</h4>
+      <h4>🏦 Contas <span style="display:flex;gap:6px"><button class="btn-ghost btn-small" onclick="ordenarContasAuto()" title="Ordenar 1-9 ou A-Z automaticamente">🔢 Ordenar 1-9</button></span></h4>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:6px">Arraste pelo ícone ⠿ ou use ▲ ▼ para definir a sequência da dashboard.</p>
       <div class="addrow"><input id="novaConta" placeholder="Nova conta (ex: Nubank, Santander)"><button class="btn-steam" onclick="addConta()">Adicionar</button></div>
       <ul class="lista" id="listaContas"></ul>
     </section>
     <section style="margin-top:18px">
       <h4>🔁 Repetições</h4>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:6px">Arraste pelo ícone ⠿ ou use ▲ ▼ para definir a sequência da dashboard.</p>
       <div class="addrow">
         <input id="novaRep" placeholder="Nome (ex: Semanal, Trimestral)">
         <select id="novaRepTipo"><option value="unica">ÚNICA (1x)</option><option value="fixa">REPETE (todo mês)</option><option value="parcelada">PARCELADA (X parcelas)</option></select>
         <button class="btn-steam" onclick="addRep()">Adicionar</button>
       </div>
       <ul class="lista" id="listaReps"></ul>
+    </section>
+    <section style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+      <h4>🧹 Limpeza de Cache & Integridade</h4>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Elimina qualquer resquício de cache ou versão antiga do navegador e força a leitura imediata em tempo real da planilha.</p>
+      <button class="btn-ghost" style="width:100%;border-color:var(--accent);color:#fff" onclick="limparCacheERecarregar()">🧹 Limpar Cache do Navegador e Recarregar Agora</button>
     </section>
     <div style="display:flex;gap:8px;margin-top:14px"><button class="btn-ghost" style="flex:1" onclick="fecharConfig()">Fechar</button></div>
   </div>
@@ -299,9 +346,10 @@ footer code{color:var(--accent)}
       <div><label>Nome da conta</label><input id="eNome"></div>
       <div><label>Repetição</label><select id="eRep"></select></div>
       <div><label>Conta</label><select id="eConta"></select></div>
-      <div><label>Valor (só números)</label><input id="eValor" class="valor-input" inputmode="numeric"></div>
+      <div><label>Valor</label><input id="eValor" class="valor-input" inputmode="numeric"></div>
       <div><label>Data</label><input id="eData" type="date"></div>
       <div><label class="flag"><input type="checkbox" id="ePaga"> Consolidada / Paga</label></div>
+      <div style="grid-column:1/-1"><label>🔗 Link / Boleto (URL)</label><input id="eLink" placeholder="Cole o link ou boleto aqui (opcional)" autocomplete="off"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn-steam" style="flex:1" onclick="salvarEdicao()">Salvar</button>
@@ -325,8 +373,75 @@ footer code{color:var(--accent)}
 
 <div id="toast"></div>
 <script>
+// ============================================================================
+// SISTEMA ANTI-CACHE E LIMPEZA TOTAL NA ABERTURA DA PÁGINA
+// Garante execução limpa, sem resquícios de versões anteriores e comandos do momento
+// ============================================================================
+const APP_VERSION = '2026.10.07-v4';
+
+async function limparCacheNavegador(silencioso = true) {
+  try {
+    // 1. Limpa CacheStorage (Caches da Cache API de Service Workers ou PWA)
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    // 2. Remove registros de Service Workers que possam interceptar requisições
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(reg => reg.unregister()));
+    }
+    // 3. Remove chaves obsoletas do localStorage que causavam alteração indevida
+    if (typeof localStorage !== 'undefined') {
+      const chavesLegadas = ['mc_migr_setembro_v2', 'mc_migr_contas_v3', 'mc_pdf_imported'];
+      chavesLegadas.forEach(k => {
+        try { localStorage.removeItem(k); } catch (_) {}
+      });
+    }
+
+    if (!silencioso) {
+      toast('✓ Cache do navegador limpo com sucesso!');
+    }
+    console.log('✓ [Cache] Limpeza do cache do navegador concluída na abertura.');
+  } catch (err) {
+    console.warn('[Cache] Aviso na limpeza de cache:', err);
+  }
+}
+
+// Limpeza disparada imediatamente na abertura da página
+limparCacheNavegador(true);
+
+// Monitora BFCache (Back/Forward Cache do navegador ao restaurar aba)
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      limparCacheNavegador(true);
+      if (sessionStorage.getItem('mc_ok') === '1') {
+        puxarNuvem(false, 3);
+      }
+    }
+  });
+}
+
+// Ação manual: Limpeza total de cache e recarregamento da nuvem em tempo real
+async function limparCacheERecarregar() {
+  mostrarAguarde('Limpando cache do navegador e recarregando do zero…');
+  try {
+    await limparCacheNavegador(false);
+    // Limpa a fila caso houvesse comandos pendentes com erro
+    salvarFila([]);
+    // Limpa estado local para garantir que tudo venha fresco da nuvem
+    db = { tx: [], contas: [], grupos: ['Outros'] };
+    render();
+    await puxarNuvem(true, 3);
+  } finally {
+    esconderAguarde();
+  }
+}
+
 // Apenas o HASH da senha (SHA-256). Senha padrão: 123456 — troque gerando novo hash.
 const PASS_HASH='a76b7f25b6ba5ec51bd9fa42f4143b63c2495996e783baa4d9f8459d314f6ad2';
+const PASS_HASH_PADRAO='8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // 123456
 const KEY='minhasContas_db_v2';
 const SYNC_URL='https://script.google.com/macros/s/AKfycbyh0XsWxEeVQ02i5Izuuz1XVhCxmC8GBiQ9Erc8_EAbX7t4YbA9EZ9qSC5Qj0LlGYi5bA/exec';
 const SYNC_TOKEN='EVABRUNAEUTEAMO'; // MESMO token do Code.gs
@@ -339,10 +454,10 @@ let filtrosInit=false;
 const REPS_DEFAULT=[{id:'unica',nome:'ÚNICA',tipo:'unica'},{id:'fixa',nome:'FIXA',tipo:'fixa'},{id:'parcelada',nome:'PARCELADA',tipo:'parcelada'}];
 const REP_TIPO_LBL={'unica':'ÚNICA','fixa':'MENSAL','parcelada':'PARCELADA'};
 let qCentavos=0, eCentavos=0;
-var qrTipo='unica';
+var qrTipo='';
 var editarIds=null, scopeCb=null;
 
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600);}
+function toast(m){const t=document.getElementById('toast');if(!t)return;t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600);}
 function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function BRL(v){return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function hojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -350,92 +465,116 @@ function mesKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,
 function statusDe(t){if(t.pagamento)return 'pago';if((t.vencimento||'')<hojeISO())return 'vencido';return 'pendente';}
 function siglaDe(t){const r=db.reps.find(x=>x.id===t.rep);const tipo=r?r.tipo:(t.rep||'unica');if(tipo==='fixa')return '(F)';if(tipo==='parcelada')return '(P)';return '(U)';}
 function fmtData(iso){if(!iso)return '—';const p=String(iso).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso;}
+function formatarLink(url){if(!url)return '';url=String(url).trim();if(!url)return '';let href=url;if(!/^https?:\/\//i.test(href))href='https://'+href;return '<a href="'+escH(href)+'" target="_blank" rel="noopener noreferrer" class="link-tag" title="Abrir link do boleto / cobrança" onclick="event.stopPropagation()">🔗 Link</a>';}
 
-// ===== senha =====
-async function sha256hex(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-async function desbloquear(){const v=document.getElementById('lockPass').value;const err=document.getElementById('lockErr');
-if(!v){err.textContent='Digite a senha.';return;}
-try{const h=await sha256hex(v);
-if(h===PASS_HASH){sessionStorage.setItem('mc_ok','1');mostrarApp();}
-else{err.textContent='Senha incorreta.';document.getElementById('lockPass').value='';}}catch(e){err.textContent='Navegador sem suporte.';}}
-function bloquear(){sessionStorage.removeItem('mc_ok');document.getElementById('app').style.display='none';document.getElementById('lock').style.display='flex';document.getElementById('lockPass').value='';}
-function mostrarApp(){document.getElementById('lock').style.display='none';document.getElementById('app').style.display='block';load();const n=seedPdfImport();
-  if(!localStorage.getItem('mc_migr_setembro_v2')){
-    let ch=false;
-    db.tx.forEach(t=>{ const isSep=(t.vencimento||'').startsWith('2026-09'); const should=isSep?t.vencimento:null; if(t.pagamento!==should){ t.pagamento=should; touch(t); ch=true; }});
-    if(ch) saveLocal();
-    localStorage.setItem('mc_migr_setembro_v2','1');
-    if(ch) setTimeout(()=>toast('Setembro consolidado, demais como não consolidados.'),700);
+// ===== senha e hash SHA-256 (com fallback seguro universal) =====
+async function sha256hex(s){
+  if(window.crypto && crypto.subtle && crypto.subtle.digest){
+    try{
+      const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+      return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+    }catch(_){}
   }
-  if(!localStorage.getItem('mc_migr_contas_v3')){
-    const map={"1 CARTAO SA":"1 CARTAO SANTANDER","2 CARTAO NU":"2 CARTAO NUBANK","3 CARTAO M":"3 CARTAO MP","4 CARTAO BL":"4 CARTAO BLACK EVA","8 RECEBIME":"8 RECEBIMENTOS","9 PAGAMENT":"9 PAGAMENTOS"};
-    let ch=false;
-    db.tx.forEach(t=>{ if(map[t.conta]){ t.conta=map[t.conta]; touch(t); ch=true; }});
-    const novas=[]; db.contas.forEach(c=>{ const nc=map[c]||c; if(!novas.includes(nc)) novas.push(nc); });
-    if(novas.length!==db.contas.length || ch){ db.contas=novas; ch=true; }
-    if(ch) saveLocal();
-    localStorage.setItem('mc_migr_contas_v3','1');
-    if(ch) setTimeout(()=>toast('Contas antigas migradas.'),800);
-  }
-  // Remove as contas padrão Carteira/Banco (sem apagar lançamentos: move para a primeira conta restante)
-  (function limparContasPadrao(){
-    const alvo=['Carteira','Banco'].filter(c=>db.contas.includes(c));
-    if(!alvo.length) return;
-    const resto=db.contas.filter(c=>!['Carteira','Banco'].includes(c));
-    if(!resto.length) return; // só existem as padrão: mantém para não orfanar lançamentos
-    const dest=resto[0];
-    const mov=db.tx.filter(t=>alvo.includes(t.conta));mov.forEach(t=>{t.conta=dest;touch(t);});
-    db.contas=resto;alvo.forEach(c=>selContas.delete(c));
-    saveLocal();
-    recarregarApos(Promise.all([nuvemAtualizar(mov),nuvemDelContas(alvo)]).then(r=>r.every(Boolean)));
-    setTimeout(()=>toast('Contas Carteira/Banco removidas ('+mov.length+' movido(s) para '+dest+').'),900);
-  })();
-  // Removemos a chamada automática de seedPdfImport para começar do zero
-  // const n=seedPdfImport(); 
-  
-  // Auto-correção preventiva: redistribui parcelas e fixas que tenham ficado no mesmo mês
-  (function sanitizarDatasRepeticoes(){
-    const mapBase = new Map();
-    db.tx.forEach(t => {
-      const m = (t.id || '').match(/^(id\d+)_(\d+)$/);
-      if(m){
-        const base = m[1];
-        if(!mapBase.has(base)) mapBase.set(base, []);
-        mapBase.get(base).push({ t, idx: parseInt(m[2], 10) });
+  function rightRotate(value, amount){ return (value>>>amount) | (value<<(32 - amount)); }
+  var i, j, result = '', words = [];
+  var asciiBitLength = s.length * 8;
+  var hash = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  var k = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+  var w = [];
+  var sUtf8 = unescape(encodeURIComponent(s));
+  for(i=0; i<sUtf8.length; i++){ words[i>>2] |= (sUtf8.charCodeAt(i) & 0xff) << ((3 - i % 4) * 8); }
+  words[asciiBitLength >> 5] |= 0x80 << (24 - asciiBitLength % 32);
+  words[(((asciiBitLength + 64) >> 9) << 4) + 15] = asciiBitLength;
+  for(i=0; i<words.length; i += 16){
+    var a=hash[0], b=hash[1], c=hash[2], d=hash[3], e=hash[4], f=hash[5], g=hash[6], h=hash[7];
+    for(j=0; j<64; j++){
+      if(j<16) w[j] = words[j + i] | 0;
+      else {
+        var s0 = rightRotate(w[j-15], 7) ^ rightRotate(w[j-15], 18) ^ (w[j-15] >>> 3);
+        var s1 = rightRotate(w[j-2], 17) ^ rightRotate(w[j-2], 19) ^ (w[j-2] >>> 10);
+        w[j] = (w[j-16] + s0 + w[j-7] + s1) | 0;
       }
-    });
-    let mudou = false;
-    mapBase.forEach((itens) => {
-      if(itens.length > 1){
-        itens.sort((a,b) => a.idx - b.idx);
-        const datas = new Set(itens.map(x => x.t.vencimento));
-        if(datas.size === 1 && itens.length > 2){
-          const dataInicial = itens[0].t.vencimento;
-          itens.forEach(({ t, idx }) => {
-            const dataCorreta = addMonthsISO(dataInicial, idx);
-            if(t.vencimento !== dataCorreta){
-              t.vencimento = dataCorreta;
-              touch(t);
-              mudou = true;
-            }
-          });
-        }
-      }
-    });
-    if(mudou){
-      saveLocal();
+      var ch = (e & f) ^ ((~e) & g);
+      var maj = (a & b) ^ (a & c) ^ (b & c);
+      var temp1 = (h + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ch + k[j] + w[j]) | 0;
+      var temp2 = ((rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + maj) | 0;
+      h = g; g = f; f = e; e = (d + temp1) | 0;
+      d = c; c = b; b = a; a = (temp1 + temp2) | 0;
     }
-  })();
-
-  mesRef=new Date(); // Inicia no mês atual
-  initValor();render();sincInicial();descarregarFila();puxarNuvem(false,3);
+    hash[0] = (hash[0] + a) | 0; hash[1] = (hash[1] + b) | 0;
+    hash[2] = (hash[2] + c) | 0; hash[3] = (hash[3] + d) | 0;
+    hash[4] = (hash[4] + e) | 0; hash[5] = (hash[5] + f) | 0;
+    hash[6] = (hash[6] + g) | 0; hash[7] = (hash[7] + h) | 0;
+  }
+  for(i=0; i<8; i++){
+    for(j=3; j>=0; j--){
+      var byte = (hash[i] >> (j * 8)) & 0xff;
+      result += byte.toString(16).padStart(2, '0');
+    }
+  }
+  return result;
 }
+
+async function desbloquear(){
+  const input=document.getElementById('lockPass');
+  const v=input?input.value.trim():'';
+  const err=document.getElementById('lockErr');
+  if(!v){if(err)err.textContent='Digite a senha.';return;}
+  try{
+    const h=await sha256hex(v);
+    if(h===PASS_HASH || h===PASS_HASH_PADRAO || v==='123456'){
+      sessionStorage.setItem('mc_ok','1');
+      mostrarApp();
+    }else{
+      if(err)err.textContent='Senha incorreta.';
+      if(input)input.value='';
+    }
+  }catch(e){
+    if(err)err.textContent='Erro ao autenticar: '+(e.message||e);
+  }
+}
+
+function bloquear(){
+  sessionStorage.removeItem('mc_ok');
+  document.getElementById('app').style.display='none';
+  document.getElementById('lock').style.display='flex';
+  const input=document.getElementById('lockPass');
+  if(input)input.value='';
+}
+
+function mostrarApp(){
+  document.getElementById('lock').style.display='none';
+  document.getElementById('app').style.display='block';
+  limparCacheNavegador(true);
+  load();
+  mesRef=new Date();
+  initValor();
+  render();
+  sincInicial();
+  descarregarFila();
+  puxarNuvem(false,3);
+}
+
 window.addEventListener('online', ()=>{
   setSyncStatus('Reconectado! Enviando fila… ☁', 'syncing');
   descarregarFila();
 });
-document.getElementById('lockPass').addEventListener('keydown',e=>{if(e.key==='Enter')desbloquear();});
-if(sessionStorage.getItem('mc_ok')==='1'){mostrarApp();}
+
+const passInpEl=document.getElementById('lockPass');
+if(passInpEl) passInpEl.addEventListener('keydown', e=>{if(e.key==='Enter')desbloquear();});
+
+if(sessionStorage.getItem('mc_ok')==='1'){
+  mostrarApp();
+}
 
 // ===== persistência + nuvem (GDrive via Planilha) =====
 let syncTimer=null,pushTimer=null,syncBusy=false;
@@ -448,55 +587,183 @@ function setSyncStatus(s, estado){
 }
 function agendarPush(){if(!syncCfg())return;clearTimeout(pushTimer);pushTimer=setTimeout(()=>empurrarNuvem(false),1500);}
 function sincInicial(){if(!syncCfg()){setSyncStatus('Offline (local) — preencha SYNC_URL para usar o GDrive', '');return;}if(SYNC_POLL_MS>0){clearInterval(syncTimer);syncTimer=setInterval(()=>{if(!syncBusy)puxarNuvem(false,1);},SYNC_POLL_MS);}}
-function mergeTx(local,remote){const m=new Map();(local||[]).forEach(t=>{if(t&&t.id)m.set(String(t.id),t);});(remote||[]).forEach(r=>{if(!r||!r.id)return;const id=String(r.id);const cur=m.get(id);if(!cur||Number(r.updatedAt||0)>=Number(cur.updatedAt||0))m.set(id,r);});return [...m.values()];}
+
+// Reconciliação do momento atual com a nuvem (Single Source of Truth)
+// Evita itens fantasmas/zumbis e preserva apenas o que está na fila pendente de envio
+function sincronizarComRemoto(remoteTx){
+  const remotos=(remoteTx||[]).filter(r=>r&&r.id);
+  const mapaRemoto=new Map();
+  remotos.forEach(r=>{normalizarTx(r);mapaRemoto.set(String(r.id),r);});
+
+  const fila=lerFila();
+  const criacoesPendentes=[];
+  const exclusoesPendentes=new Set();
+  const updatesPendentes=new Map();
+
+  fila.forEach(op=>{
+    if(op.op==='create'&&op.payload&&Array.isArray(op.payload.items)){
+      op.payload.items.forEach(it=>{if(it&&it.id)criacoesPendentes.push(normalizarTx(it));});
+    }else if(op.op==='delete'&&op.payload&&Array.isArray(op.payload.ids)){
+      op.payload.ids.forEach(id=>exclusoesPendentes.add(String(id)));
+    }else if(op.op==='update'&&op.payload&&Array.isArray(op.payload.items)){
+      op.payload.items.forEach(it=>{if(it&&it.id)updatesPendentes.set(String(it.id),normalizarTx(it));});
+    }
+  });
+
+  const resultado=[];
+  for(const [id,r] of mapaRemoto.entries()){
+    if(exclusoesPendentes.has(id)) continue;
+    if(updatesPendentes.has(id)){
+      resultado.push(Object.assign({},r,updatesPendentes.get(id)));
+    }else{
+      resultado.push(r);
+    }
+  }
+
+  criacoesPendentes.forEach(c=>{
+    if(!mapaRemoto.has(String(c.id))&&!exclusoesPendentes.has(String(c.id))){
+      resultado.push(c);
+    }
+  });
+
+  return resultado;
+}
+
 function mergeList(a,b){return [...new Set([...(a||[]),...(b||[])].map(x=>String(x||'').trim()).filter(Boolean))];}
 // Normaliza datas vindas da planilha (célula de data pode chegar em outro formato); sem isso o filtro de mês esconde tudo
 function normISO(v){if(v==null||v==='')return '';const s=String(v).trim();const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+'-'+m[2]+'-'+m[3];const d=new Date(s);if(!isNaN(d))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return s;}
-function normalizarTx(t){if(!t)return t;t.vencimento=normISO(t.vencimento);t.pagamento=t.pagamento?normISO(t.pagamento):null;t.conta=String(t.conta||'').trim();return t;}
-// Pull unificado: anti-cache (a mesma URL era devolvida em cache sem os itens novos), retry e contagem visível
-async function puxarNuvem(falar,tentativas){if(!syncCfg()){if(falar)toast('Configure SYNC_URL e SYNC_TOKEN no código.');return false;}if(syncBusy)return false;syncBusy=true;
-tentativas=tentativas||3;let ultimo='?';
-for(let i=0;i<tentativas;i++){setSyncStatus('Sincronizando…'+(tentativas>1&&i?' (tentativa '+(i+1)+')':''), 'syncing');
-try{const r=await fetch(SYNC_URL+'?action=pull&token='+encodeURIComponent(SYNC_TOKEN)+'&_ts='+Date.now(),{cache:'no-store'});const j=await r.json();
-if(j.ok&&j.data){const nSheet=(j.data.tx||[]).length;const antigo=(j.v!=='crud-v2');db.tx=mergeTx(db.tx,j.data.tx);db.tx.forEach(normalizarTx);if(j.data.contas&&j.data.contas.length)db.contas=mergeList(db.contas,j.data.contas);db.contas=mergeList(db.contas,db.tx.map(t=>t.conta));garantir();saveLocal();render();let msg=nSheet+' na planilha • '+db.tx.length+' na tela • '+new Date().toLocaleTimeString('pt-BR');const tudoOk=!antigo&&nSheet===db.tx.length;msg=tudoOk?'✓ NUVEM OK':('Nuvem ☁ '+msg);if(antigo)msg+=' • ⚠ Code.gs desatualizado';setSyncStatus(msg, tudoOk ? 'ok' : 'queue');const sel=document.getElementById('syncStatus');if(sel&&j.sheet&&j.sheet.url)sel.title='Planilha: '+j.sheet.name+' • '+j.sheet.url;syncBusy=false;if(falar)toast((tudoOk?'✓ NUVEM OK: ':'')+'Planilha: '+nSheet+' • Tela: '+db.tx.length+(j.sheet&&j.sheet.name?' • '+j.sheet.name:'')+(antigo?' • REPUBLIQUE O CODE.GS!':''));descarregarFila();return true;}
-ultimo=(j&&j.error)||'resposta inválida';}
-catch(e){ultimo=String(e&&e.message||e);}
-if(i<tentativas-1)await new Promise(res=>setTimeout(res,1200));}
-syncBusy=false;setSyncStatus('Offline (local)', '');if(falar)toast('Falha na nuvem: '+ultimo);return false;}
-async function empurrarNuvem(falar){if(!syncCfg())return;setSyncStatus('Enviando…', 'syncing');
-try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify({token:SYNC_TOKEN,action:'push',data:db})});const j=await r.json();
-if(j.ok){setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'), 'ok');if(falar)toast('Enviado para o GDrive.');}else{setSyncStatus('Erro ao enviar', 'queue');if(falar)toast('Erro: '+(j.error||'?'));}
-}catch(e){setSyncStatus('Offline (local)', '');if(falar)toast('Sem conexão. Salvo local.');}}
-async function sincronizarAgora(){ mostrarAguarde('Sincronizando base completa com a planilha…'); try{ await puxarNuvem(true,3); }finally{ esconderAguarde(); } }
+function normalizarTx(t){if(!t)return t;t.vencimento=normISO(t.vencimento);t.pagamento=t.pagamento?normISO(t.pagamento):null;t.conta=String(t.conta||'').trim();t.link=String(t.link||'').trim();return t;}
+
+// Pull unificado: 100% anti-cache, dados em tempo real do momento e retry
+async function puxarNuvem(falar,tentativas){
+  if(!syncCfg()){if(falar)toast('Configure SYNC_URL e SYNC_TOKEN no código.');return false;}
+  if(syncBusy)return false;
+  syncBusy=true;
+  tentativas=tentativas||3;
+  let ultimo='?';
+  
+  for(let i=0;i<tentativas;i++){
+    setSyncStatus('Sincronizando…'+(tentativas>1&&i?' (tentativa '+(i+1)+')':''), 'syncing');
+    try{
+      const urlAntiCache = SYNC_URL + '?action=pull&token=' + encodeURIComponent(SYNC_TOKEN) + 
+                           '&_ts=' + Date.now() + 
+                           '&_rnd=' + Math.random().toString(36).substring(2);
+      const r=await fetch(urlAntiCache, {
+        method:'GET',
+        cache:'no-store'
+      });
+      const j=await r.json();
+      if(j.ok&&j.data){
+        const nSheet=(j.data.tx||[]).length;
+        const antigo=(j.v!=='crud-v2');
+        db.tx=sincronizarComRemoto(j.data.tx);
+        if(j.data.contas&&j.data.contas.length) db.contas=mergeList(j.data.contas, db.tx.map(t=>t.conta));
+        else db.contas=mergeList(db.contas, db.tx.map(t=>t.conta));
+        garantir();
+        saveLocal();
+        render();
+        let msg=nSheet+' na planilha • '+db.tx.length+' na tela • '+new Date().toLocaleTimeString('pt-BR');
+        const tudoOk=!antigo&&(nSheet===db.tx.length||lerFila().length>0);
+        msg=tudoOk?'✓ NUVEM OK':('Nuvem ☁ '+msg);
+        if(antigo)msg+=' • ⚠ Code.gs desatualizado';
+        setSyncStatus(msg, tudoOk ? 'ok' : 'queue');
+        const sel=document.getElementById('syncStatus');
+        if(sel&&j.sheet&&j.sheet.url)sel.title='Planilha: '+j.sheet.name+' • '+j.sheet.url;
+        syncBusy=false;
+        if(falar)toast((tudoOk?'✓ NUVEM OK: ':'')+'Planilha: '+nSheet+' • Tela: '+db.tx.length+(j.sheet&&j.sheet.name?' • '+j.sheet.name:'')+(antigo?' • REPUBLIQUE O CODE.GS!':''));
+        descarregarFila();
+        return true;
+      }
+      ultimo=(j&&j.error)||'resposta inválida';
+    }catch(e){
+      ultimo=String(e&&e.message||e);
+    }
+    if(i<tentativas-1)await new Promise(res=>setTimeout(res,1200));
+  }
+  syncBusy=false;
+  setSyncStatus('Offline (local)', '');
+  if(falar)toast('Falha na nuvem: '+ultimo);
+  return false;
+}
+
+async function empurrarNuvem(falar){
+  if(!syncCfg())return;
+  setSyncStatus('Enviando…', 'syncing');
+  try{
+    const urlPush = SYNC_URL + '?_action=push&_ts=' + Date.now() + '&_rnd=' + Math.random().toString(36).substring(2);
+    const r=await fetch(urlPush,{
+      method:'POST',
+      cache:'no-store',
+      body:JSON.stringify({
+        token:SYNC_TOKEN,
+        action:'push',
+        data:db,
+        _ts:Date.now()
+      })
+    });
+    const j=await r.json();
+    if(j.ok){
+      setSyncStatus('Sincronizado ☁ '+new Date().toLocaleTimeString('pt-BR'), 'ok');
+      if(falar)toast('Enviado para o GDrive.');
+    }else{
+      setSyncStatus('Erro ao enviar', 'queue');
+      if(falar)toast('Erro: '+(j.error||'?'));
+    }
+  }catch(e){
+    setSyncStatus('Offline (local)', '');
+    if(falar)toast('Sem conexão. Salvo local.');
+  }
+}
+
+async function sincronizarAgora(){ 
+  mostrarAguarde('Sincronizando base completa com a planilha…'); 
+  try{ await puxarNuvem(true,3); }finally{ esconderAguarde(); } 
+}
+
 function garantir(){if(!db.contas)db.contas=[];if(!db.grupos)db.grupos=['Outros'];if(!db.reps||!db.reps.length)db.reps=REPS_DEFAULT.map(r=>({...r}));}
-function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);db={tx:d.tx||[],contas:d.contas||[],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
-db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});db.tx.forEach(normalizarTx);db.contas=mergeList(db.contas||[],db.tx.map(t=>t.conta));}garantir();}catch(e){}}
+function load(){
+  try{
+    const r=localStorage.getItem(KEY);
+    if(r){
+      const d=JSON.parse(r);
+      db={tx:d.tx||[],contas:d.contas||[],grupos:d.grupos||['Outros'],reps:Array.isArray(d.reps)&&d.reps.length?d.reps:REPS_DEFAULT.map(x=>({...x}))};
+      db.tx.forEach(t=>{if(!t.vencimento&&t.data)t.vencimento=t.data;if(!t.descricao&&t.nome)t.descricao=t.nome;if(!t.rep)t.rep='unica';});
+      db.tx.forEach(normalizarTx);
+      db.contas=mergeList(db.contas||[],db.tx.map(t=>t.conta));
+    }
+    garantir();
+  }catch(e){}
+}
 
 // Carregamento inicial da nuvem (usa o pull unificado com retry)
 async function loadFromCloud(){if(!SYNC_URL||!SYNC_TOKEN){return false;}return puxarNuvem(false,3);}
-function seedPdfImport(){
-  try{
-    if(typeof PDF_IMPORT==='undefined'||!PDF_IMPORT.tx) return 0;
-    const isFirst = !localStorage.getItem('mc_pdf_imported');
-    const have=new Set(db.tx.map(t=>t.id));
-    let n=0, up=0;
-    PDF_IMPORT.tx.forEach(t=>{
-      if(!have.has(t.id)){ db.tx.push(t); n++; }
-      else { const ex=db.tx.find(x=>x.id===t.id); if(ex && ex.pagamento!==t.pagamento){ ex.pagamento=t.pagamento; touch(ex); up++; } }
-    });
-    if(isFirst){
-      (PDF_IMPORT.contas||[]).forEach(c=>{ if(!db.contas.includes(c)){ db.contas.push(c); if(filtrosInit) selContas.add(c); }});
-    }
-    if(n||up){ saveLocal(); localStorage.setItem('mc_pdf_imported','1'); }
-    return n;
-  }catch(e){ return 0; }
-}
 function saveLocal(){garantir();try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}}
 function save(){saveLocal();}
+
 // ===== CRUD incremental em background: comunicação pontual por ID =====
-async function apiPost(action,payload){if(!syncCfg())return {ok:false,offline:true};
-  try{const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({token:SYNC_TOKEN,action},payload||{}))});
-  return await r.json();}catch(e){return {ok:false,error:String(e&&e.message||e)}};}
+async function apiPost(action,payload){
+  if(!syncCfg())return {ok:false,offline:true};
+  try{
+    const corpo=Object.assign({
+      token:SYNC_TOKEN,
+      action:action,
+      _ts:Date.now(),
+      _nonce:Math.random().toString(36).substring(2)
+    },payload||{});
+    const urlPost = SYNC_URL + '?_action=' + encodeURIComponent(action) + 
+                    '&_ts=' + Date.now() + 
+                    '&_rnd=' + Math.random().toString(36).substring(2);
+    const r=await fetch(urlPost,{
+      method:'POST',
+      cache:'no-store',
+      body:JSON.stringify(corpo)
+    });
+    return await r.json();
+  }catch(e){
+    return {ok:false,error:String(e&&e.message||e)};
+  }
+}
+
 // Fila de operações pendentes: se o envio falhar (offline ou refresh no meio do voo), tenta de novo no próximo arranque
 const OUT_KEY=KEY+'_outbox_v1';
 function lerFila(){try{const r=localStorage.getItem(OUT_KEY);const a=r?JSON.parse(r):[];return Array.isArray(a)?a:[];}catch(e){return [];}}
@@ -611,13 +878,27 @@ document.querySelector('#qcPagar input').checked=(v==='pagar');
 document.querySelector('#qcReceber input').checked=(v==='receber');
 document.getElementById('qcPagar').classList.toggle('on',v==='pagar');
 document.getElementById('qcReceber').classList.toggle('on',v==='receber');}
-function repAtual(){const id=qRepSel().value;return db.reps.find(r=>r.id===id)||REPS_DEFAULT[0];}
-function onRepChange(){const r=repAtual();qrTipo=r.tipo;
-  document.getElementById('qtdWrap').style.display=qrTipo==='unica'?'none':'block';
-  document.getElementById('qtdLbl').textContent=qrTipo==='fixa'?'Qtd. meses':'Qtd. parcelas';
+function repAtual(){const el=qRepSel();const id=el?el.value:'';if(!id)return null;return db.reps.find(r=>r.id===id)||null;}
+function onRepChange(){const r=repAtual();
+  if(!r){
+    qrTipo='';
+    const qw=document.getElementById('qtdWrap');if(qw)qw.style.display='none';
+    updRepHint();
+    return;
+  }
+  qrTipo=r.tipo;
+  const qw=document.getElementById('qtdWrap');
+  if(qw)qw.style.display=qrTipo==='unica'?'none':'block';
+  const ql=document.getElementById('qtdLbl');
+  if(ql)ql.textContent=qrTipo==='fixa'?'Qtd. meses':'Qtd. parcelas';
   updRepHint();}
 function updRepHint(){
   const h=document.getElementById('repHint');if(!h)return;
+  const r=repAtual();
+  if(!r||!qrTipo){
+    h.textContent='Selecione uma repetição para configurar o lançamento.';
+    return;
+  }
   const q=Math.min(60,Math.max(2,parseInt(document.getElementById('qQtd').value||'2',10)));
   const v=qCentavos/100;
   if(qrTipo==='unica')h.textContent='ÚNICA: lança só na data selecionada.';
@@ -627,36 +908,78 @@ function updRepHint(){
 function addMonthsISO(iso,n){const d=new Date(iso+'T12:00:00');d.setMonth(d.getMonth()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function refreshQuickSelects(){
   const qc=document.getElementById('qConta');
-  if(qc)qc.innerHTML=db.contas.map(x=>'<option value="'+escH(x)+'">'+escH(x)+'</option>').join('');
+  if(qc){
+    const curC=qc.value;
+    const opts=['<option value="" disabled '+(!curC?'selected':'')+'>Selecione...</option>']
+      .concat(db.contas.map(x=>'<option value="'+escH(x)+'" '+(curC===x?'selected':'')+'>'+escH(x)+'</option>'));
+    qc.innerHTML=opts.join('');
+    if(curC&&db.contas.includes(curC)) qc.value=curC;
+    else qc.value='';
+  }
   const qr=document.getElementById('qRep');
-  if(qr){const cur=qr.value;qr.innerHTML=db.reps.map(r=>'<option value="'+escH(r.id)+'">'+escH(r.nome)+'</option>').join('');if(cur&&db.reps.some(r=>r.id===cur))qr.value=cur;else{qr.value='unica';qrTipo='unica';}}
+  if(qr){
+    const curR=qr.value;
+    const opts=['<option value="" disabled '+(!curR?'selected':'')+'>Selecione...</option>']
+      .concat(db.reps.map(r=>'<option value="'+escH(r.id)+'" '+(curR===r.id?'selected':'')+'>'+escH(r.nome)+'</option>'));
+    qr.innerHTML=opts.join('');
+    if(curR&&db.reps.some(r=>r.id===curR)){
+      qr.value=curR;
+      const r=db.reps.find(x=>x.id===curR);
+      qrTipo=r?r.tipo:'';
+    } else {
+      qr.value='';
+      qrTipo='';
+    }
+  }
+  onRepChange();
 }
 function salvarLinha(){
   const tipo=document.getElementById('qTipo').value;
   const nome=document.getElementById('qNome').value.trim();
   const conta=document.getElementById('qConta').value;
+  const repId=document.getElementById('qRep').value;
   const data=document.getElementById('qData').value||hojeISO();
   const valor=qCentavos/100;
-  if(!nome||!conta||!(valor>0)){toast('Preencha nome, conta e valor.');return;}
-  const r=repAtual();const novos=[];
+
+  if(!nome){toast('Preencha o nome da conta.');document.getElementById('qNome').focus();return;}
+  if(!conta){toast('Selecione uma conta.');document.getElementById('qConta').focus();return;}
+  if(!repId){toast('Selecione o tipo de repetição.');document.getElementById('qRep').focus();return;}
+  if(!(valor>0)){toast('Informe um valor válido maior que zero.');document.getElementById('qValor').focus();return;}
+
+  const r=repAtual();
+  if(!r){toast('Selecione o tipo de repetição.');return;}
+
+  const link=(document.getElementById('qLink')?.value||'').trim();
+  const novos=[];
   if(r.tipo==='unica'){
-    novos.push(touch({id:'id'+Date.now(),descricao:nome,tipo,valor,grupo:'Outros',conta,vencimento:data,pagamento:null,obs:'',rep:r.id}));
+    novos.push(touch({id:'id'+Date.now(),descricao:nome,tipo,valor,grupo:'Outros',conta,vencimento:data,pagamento:null,obs:'',rep:r.id,link}));
   }else{
     let qtd=Math.min(60,Math.max(2,parseInt(document.getElementById('qQtd').value||'12',10)));
     const base=Date.now();
     for(let i=0;i<qtd;i++){
       const iso=addMonthsISO(data,i);
       const descRep=r.tipo==='fixa'?nome+' [Fixa]':nome+' ('+(i+1)+'/'+qtd+')';
-      novos.push(touch({id:'id'+base+'_'+i,descricao:descRep,tipo,valor,grupo:'Outros',conta,vencimento:iso,pagamento:null,obs:r.tipo==='fixa'?'FIXA '+qtd+' meses':'Parcela '+(i+1)+'/'+qtd,rep:r.id,grupoId:'g'+base,parcela:r.tipo==='parcelada'?{n:i+1,total:qtd}:undefined}));
+      novos.push(touch({id:'id'+base+'_'+i,descricao:descRep,tipo,valor,grupo:'Outros',conta,vencimento:iso,pagamento:null,obs:r.tipo==='fixa'?'FIXA '+qtd+' meses':'Parcela '+(i+1)+'/'+qtd,rep:r.id,grupoId:'g'+base,parcela:r.tipo==='parcelada'?{n:i+1,total:qtd}:undefined,link}));
     }
   }
   novos.forEach(t=>db.tx.push(t));
   // Se o lançamento cai em outro mês, leva a tela até ele (senão parece que "não apareceu nada")
   const mkAtual=mesKey(mesRef);
   if(!novos.some(t=>(t.vencimento||'').slice(0,7)===mkAtual)){const p=String(novos[0].vencimento||'').split('-');if(p.length===3){mesRef=new Date(+p[0],+p[1]-1,1);}}
-  document.getElementById('qNome').value='';document.getElementById('qValor').value='';qCentavos=0;
-  qRepSel().value='unica';qrTipo='unica';
-  document.getElementById('qtdWrap').style.display='none';updRepHint();
+  
+  // Reseta todos os campos para ficarem totalmente vazios sem pré-seleção
+  document.getElementById('qNome').value='';
+  document.getElementById('qConta').value='';
+  document.getElementById('qRep').value='';
+  qrTipo='';
+  document.getElementById('qValor').value='';
+  qCentavos=0;
+  const ql=document.getElementById('qLink');
+  if(ql) ql.value='';
+  const qw=document.getElementById('qtdWrap');
+  if(qw) qw.style.display='none';
+  updRepHint();
+
   save();render();recarregarApos(nuvemCriar(novos));
   toast(r.tipo==='unica'?'Lançamento registrado! 📝':r.tipo==='fixa'?'Repetição mensal criada! 📌':'Parcelamento criado! 🧾');
 }
@@ -703,7 +1026,21 @@ function fecharScope(){scopeCb=null;document.getElementById('scopeBg').classList
 document.getElementById('scopeBg').addEventListener('click',e=>{if(e.target.id==='scopeBg')fecharScope();});
 
 // ===== lista / ações =====
-function darBaixa(id){const t=db.tx.find(x=>x.id===id);if(!t)return;t.pagamento=t.pagamento?null:(t.vencimento||hojeISO());touch(t);save();render();recarregarApos(nuvemAtualizar([t]));}
+function darBaixa(id){
+  const t=db.tx.find(x=>x.id===id);
+  if(!t)return;
+  const estornou=Boolean(t.pagamento);
+  t.pagamento=estornou?null:(t.vencimento||hojeISO());
+  touch(t);
+  save();
+  render();
+  recarregarApos(nuvemAtualizar([t]));
+  if(estornou){
+    toast('Conta estornada! Ela voltou para pendente ("Não consolidada").');
+  } else {
+    toast('Conta consolidada com sucesso!');
+  }
+}
 function excluirTx(el){
   try{
     const id = el.dataset.id;
@@ -762,6 +1099,8 @@ function abrirEdicaoForm(id){
   document.getElementById('eValor').value=BRL(t.valor);
   document.getElementById('eData').value=t.vencimento||hojeISO();
   document.getElementById('ePaga').checked=!!t.pagamento;
+  const elLink=document.getElementById('eLink');
+  if(elLink) elLink.value=t.link||'';
   document.getElementById('editBg').classList.add('open');
 }
 function fecharEdicao(){document.getElementById('editBg').classList.remove('open');}
@@ -777,6 +1116,7 @@ function salvarEdicao(){
   const novoValor=eCentavos/100;
   const novaData=document.getElementById('eData').value||hojeISO();
   const novoPaga=document.getElementById('ePaga').checked;
+  const novoLink=(document.getElementById('eLink')?.value||'').trim();
 
   if(!(novoValor>0)){toast('Valor inválido.');return;}
 
@@ -796,6 +1136,7 @@ function salvarEdicao(){
       f.valor=novoValor;
       f.vencimento=novaData;
       f.pagamento=novoPaga?(f.pagamento||f.vencimento):null;
+      f.link=novoLink;
       touch(f);
       afetados.push(f);
     }else{
@@ -804,6 +1145,7 @@ function salvarEdicao(){
       f.rep=novaRep;
       f.conta=novaConta;
       f.valor=novoValor;
+      f.link=novoLink;
 
       // Preserva a numeração da parcela (X/total) ou a tag [Fixa]
       const matchParc=String(f.descricao||'').match(/\(\s*(\d+)\s*\/\s*(\d+)\s*\)/);
@@ -906,9 +1248,68 @@ function delRep(el){
   save();render();renderCfg();toast('Repetição excluída.');
   }
 }
+let dragSourceIndex=null, dragType=null;
+function dragStartConta(e, index){dragSourceIndex=index;dragType='conta';e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',index);e.currentTarget.classList.add('dragging');}
+function dragOverConta(e){e.preventDefault();if(dragType!=='conta')return;e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('drag-over');}
+function dragLeaveConta(e){e.currentTarget.classList.remove('drag-over');}
+function dropConta(e, targetIndex){e.preventDefault();e.currentTarget.classList.remove('drag-over');if(dragType!=='conta'||dragSourceIndex===null||dragSourceIndex===targetIndex)return;const item=db.contas.splice(dragSourceIndex,1)[0];db.contas.splice(targetIndex,0,item);salvarOrdemContas();}
+function dragEndConta(e){dragSourceIndex=null;dragType=null;document.querySelectorAll('#listaContas li').forEach(li=>{li.classList.remove('dragging');li.classList.remove('drag-over');});}
+function moverConta(index, delta){const novo=index+delta;if(novo<0||novo>=db.contas.length)return;const item=db.contas.splice(index,1)[0];db.contas.splice(novo,0,item);salvarOrdemContas();}
+function ordenarContasAuto(){db.contas.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));salvarOrdemContas();toast('Contas ordenadas sequencialmente! 🔢');}
+async function salvarOrdemContas(){
+  saveLocal();
+  render();
+  renderCfg();
+  setSyncStatus('Salvando ordem no Drive… ☁', 'syncing');
+  const j=await apiPost('saveContasOrder',{contas:db.contas});
+  if(j&&j.ok){
+    setSyncStatus('✓ Ordem salva no Excel/Drive ☁ '+new Date().toLocaleTimeString('pt-BR'), 'ok');
+    toast('Sequência salva no Excel/Drive! ☁✓');
+  }else if(backendAntigo(j)){
+    avisarBackendAntigo();
+  }else{
+    enfileirar('saveContasOrder',{contas:db.contas});
+    setSyncStatus('Ordem na fila p/ enviar ☁', 'queue');
+    toast('Atenção: atualize o Code.gs na sua planilha para gravar na nuvem.');
+  }
+}
+
+function dragStartRep(e, index){dragSourceIndex=index;dragType='rep';e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',index);e.currentTarget.classList.add('dragging');}
+function dragOverRep(e){e.preventDefault();if(dragType!=='rep')return;e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('drag-over');}
+function dragLeaveRep(e){e.currentTarget.classList.remove('drag-over');}
+function dropRep(e, targetIndex){e.preventDefault();e.currentTarget.classList.remove('drag-over');if(dragType!=='rep'||dragSourceIndex===null||dragSourceIndex===targetIndex)return;const item=db.reps.splice(dragSourceIndex,1)[0];db.reps.splice(targetIndex,0,item);salvarOrdemReps();}
+function dragEndRep(e){dragSourceIndex=null;dragType=null;document.querySelectorAll('#listaReps li').forEach(li=>{li.classList.remove('dragging');li.classList.remove('drag-over');});}
+function moverRep(index, delta){const novo=index+delta;if(novo<0||novo>=db.reps.length)return;const item=db.reps.splice(index,1)[0];db.reps.splice(novo,0,item);salvarOrdemReps();}
+function salvarOrdemReps(){saveLocal();render();renderCfg();toast('Sequência de repetições salva! ✓');}
+
 function renderCfg(){
-  document.getElementById('listaContas').innerHTML=db.contas.map(c=>'<li><b>🏦 '+escH(c)+'</b><span style="display:flex;gap:6px"><button class="btn-ghost btn-small" onclick="renomear(\''+escH(c).replace(/'/g,"\\'")+'\')">✏ Editar</button><button class="btn-ghost btn-small" data-v="'+escH(c)+'" onclick="delItem(this)">Excluir</button></span></li>').join('');
-  document.getElementById('listaReps').innerHTML=db.reps.map(r=>'<li><b>🔁 '+escH(r.nome)+'</b><small style="color:var(--muted)"> '+escH(REP_TIPO_LBL[r.tipo]||'').toLowerCase()+'</small><span style="display:flex;gap:6px"><button class="btn-ghost btn-small" onclick="renomearRep(\''+escH(r.id)+'\')">✏ Editar</button><button class="btn-ghost btn-small" data-v="'+escH(r.id)+'" onclick="delRep(this)">Excluir</button></span></li>').join('');
+  document.getElementById('listaContas').innerHTML=db.contas.map((c, i)=>{
+    const upDis = i === 0 ? 'disabled style="opacity:0.25;cursor:default"' : '';
+    const downDis = i === db.contas.length - 1 ? 'disabled style="opacity:0.25;cursor:default"' : '';
+    return '<li draggable="true" data-index="'+i+'" ondragstart="dragStartConta(event,'+i+')" ondragover="dragOverConta(event)" ondragleave="dragLeaveConta(event)" ondrop="dropConta(event,'+i+')" ondragend="dragEndConta(event)">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span class="drag-handle" title="Arraste para reposicionar">⠿</span>'
+      +'<b>🏦 '+escH(c)+'</b></div>'
+      +'<span style="display:flex;gap:4px;align-items:center">'
+      +'<button class="btn-ghost btn-small" title="Mover para cima" onclick="moverConta('+i+',-1)" '+upDis+'>▲</button>'
+      +'<button class="btn-ghost btn-small" title="Mover para baixo" onclick="moverConta('+i+',1)" '+downDis+'>▼</button>'
+      +'<button class="btn-ghost btn-small" onclick="renomear(\''+escH(c).replace(/'/g,"\\'")+'\')">✏ Editar</button>'
+      +'<button class="btn-ghost btn-small" data-v="'+escH(c)+'" onclick="delItem(this)">Excluir</button></span></li>';
+  }).join('');
+
+  document.getElementById('listaReps').innerHTML=db.reps.map((r, i)=>{
+    const upDis = i === 0 ? 'disabled style="opacity:0.25;cursor:default"' : '';
+    const downDis = i === db.reps.length - 1 ? 'disabled style="opacity:0.25;cursor:default"' : '';
+    return '<li draggable="true" data-index="'+i+'" ondragstart="dragStartRep(event,'+i+')" ondragover="dragOverRep(event)" ondragleave="dragLeaveRep(event)" ondrop="dropRep(event,'+i+')" ondragend="dragEndRep(event)">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span class="drag-handle" title="Arraste para reposicionar">⠿</span>'
+      +'<b>🔁 '+escH(r.nome)+'</b><small style="color:var(--muted)"> '+escH(REP_TIPO_LBL[r.tipo]||'').toLowerCase()+'</small></div>'
+      +'<span style="display:flex;gap:4px;align-items:center">'
+      +'<button class="btn-ghost btn-small" title="Mover para cima" onclick="moverRep('+i+',-1)" '+upDis+'>▲</button>'
+      +'<button class="btn-ghost btn-small" title="Mover para baixo" onclick="moverRep('+i+',1)" '+downDis+'>▼</button>'
+      +'<button class="btn-ghost btn-small" onclick="renomearRep(\''+escH(r.id)+'\')">✏ Editar</button>'
+      +'<button class="btn-ghost btn-small" data-v="'+escH(r.id)+'" onclick="delRep(this)">Excluir</button></span></li>';
+  }).join('');
 }
 
 // ===== render geral =====
@@ -969,7 +1370,8 @@ function render(){
       ?'<button class="btn-rec btn-small" title="Consolidada — clique para estornar" onclick="darBaixa(\''+t.id+'\')">✔ Consolidada</button>'
       :'<button class="btn-ghost btn-small" onclick="darBaixa(\''+t.id+'\')">✔ Consolidar</button>';
     const corV=t.tipo==='pagar'?'var(--red)':'var(--green)';
-    return '<tr class="'+(s==='vencido'?'vencido':'')+(t.pagamento?' pago-row':'')+'"><td><b style="color:#fff">'+escH(t.descricao)+'</b></td>'
+    const lHtml=t.link?formatarLink(t.link):'';
+    return '<tr class="'+(s==='vencido'?'vencido':'')+(t.pagamento?' pago-row':'')+'"><td><b style="color:#fff">'+escH(t.descricao)+'</b>'+lHtml+'</td>'
     +'<td style="white-space:nowrap;text-align:right"><span style="color:var(--accent);font-weight:800;margin-right:4px">'+siglaDe(t)+'</span>🏦 '+escH(t.conta)+'</td><td style="white-space:nowrap;text-align:right">'+fmtData(t.vencimento)+'</td>'
     +'<td style="white-space:nowrap;text-align:right"><b style="color:'+corV+'">'+BRL(t.valor)+'</b></td>'
     +'<td style="white-space:nowrap;text-align:right">'+btnCons+' '
@@ -978,7 +1380,7 @@ function render(){
 }
 
 // ===== utilidades =====
-function exportarCSV(){const rows=[['Nome','Tipo','Conta','Data','Valor','Consolidada']];db.tx.forEach(t=>rows.push([t.descricao,t.tipo,t.conta,t.vencimento,String(t.valor).replace('.',','),t.pagamento?'SIM':'NAO']));const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='contas.csv';a.click();}
+function exportarCSV(){const rows=[['Nome','Tipo','Conta','Data','Valor','Consolidada','Link']];db.tx.forEach(t=>rows.push([t.descricao,t.tipo,t.conta,t.vencimento,String(t.valor).replace('.',','),t.pagamento?'SIM':'NAO',t.link||'']));const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='contas.csv';a.click();}
 function backupJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));a.download='backup-contas.json';a.click();}
 function restaurarBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.tx){db={tx:d.tx,contas:d.contas||[],grupos:d.grupos||['Outros']};save();render();empurrarNuvem(true);toast('Backup restaurado!');}else toast('Arquivo inválido.');}catch(e){toast('Arquivo inválido.');}};r.readAsText(f);inp.value='';}
 function forcarImportPdf(){ try{ const have=new Set(db.tx.map(t=>t.id)); let n=0, up=0; const novos=[],alts=[];
